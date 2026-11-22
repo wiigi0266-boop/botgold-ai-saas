@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>BotGold AI — Premium Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        gold: {400:'#fbbf24',500:'#f59e0b',600:'#d97706'},
+        dark: {800:'#0f172a',900:'#020617',950:'#01040a'}
+      },
+      fontFamily: {
+        sans: ['Inter','system-ui','sans-serif'],
+        mono: ['JetBrains Mono','monospace']
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.6s ease-out',
+        'slide-up': 'slideUp 0.5s ease-out',
+        'pulse-soft': 'pulseSoft 3s infinite',
+        'float': 'float 6s ease-in-out infinite'
+      },
+      keyframes: {
+        fadeIn: { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
+        slideUp: { '0%': { opacity: 0, transform: 'translateY(20px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+        pulseSoft: { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.6 } },
+        float: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-8px)' } }
+      }
+    }
+  }
+}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+*{box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:#01040a;color:#e2e8f0;overflow-x:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
+.glass{background:rgba(15,23,42,0.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.06)}
+.card{background:linear-gradient(145deg,rgba(30,41,59,0.55),rgba(15,23,42,0.85));border:1px solid rgba(255,255,255,0.05);border-radius:20px;transition:transform .3s ease,box-shadow .3s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,0.35)}
+.card-3d{transform-style:preserve-3d;perspective:1000px}
+.glow-gold{box-shadow:0 0 40px rgba(245,158,11,0.12)}
+.glow-red{box-shadow:0 0 30px rgba(239,68,68,0.15)}
+.status-dot{width:8px;height:8px;border-radius:50%;animation:pulseSoft 2s infinite}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+.indicator-bar{height:4px;border-radius:2px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.decision-box{background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(15,23,42,0.95));border:1px solid rgba(245,158,11,0.18)}
+.safe-bottom{padding-bottom:env(safe-area-inset-bottom)}
+/* Mobile bottom nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(2,6,23,0.92);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,0.06);padding-bottom:env(safe-area-inset-bottom)}
+@media(min-width:1024px){.bottom-nav{display:none}}
+/* Premium gauge */
+.gauge-bg{stroke:#1e293b}
+.gauge-fill{transition:stroke-dasharray 1s cubic-bezier(.4,0,.2,1)}
+/* Smooth page sections */
+.section-enter{animation:slideUp .5s ease-out both}
+</style>
+</head>
+<body class="bg-dark-950 min-h-screen antialiased">
+<!-- Mobile-first layout -->
+<div class="lg:flex lg:h-screen lg:overflow-hidden">
+
+  <!-- Sidebar - desktop only -->
+  <aside class="hidden lg:flex w-64 flex-col glass border-r border-slate-800/80">
+    <div class="p-6 border-b border-slate-800/80">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-lg shadow-gold-500/20 animate-float">
+          <i class="fas fa-robot text-white text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-white text-lg tracking-tight">BotGold AI</h1>
+          <p class="text-[11px] text-slate-400">XAUUSD • Premium</p>
+        </div>
+      </div>
+    </div>
+    <nav class="flex-1 p-4 space-y-1">
+      <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-gold-500/10 text-gold-400 font-medium text-sm">
+        <i class="fas fa-chart-line w-5 text-center"></i> Dashboard
+      </a>
+      <a href="#sentiment" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800/50 hover:text-white transition text-sm">
+        <i class="fas fa-brain w-5 text-center"></i> Sentiment
+      </a>
+      <a href="#rules" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800/50 hover:text-white transition text-sm">
+        <i class="fas fa-shield-alt w-5 text-center"></i> Règles
+      </a>
+      <a href="#history" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800/50 hover:text-white transition text-sm">
+        <i class="fas fa-history w-5 text-center"></i> Historique
+      </a>
+    </nav>
+    <div class="p-4 border-t border-slate-800/80">
+      <div class="card p-4">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[11px] text-slate-400">Statut Bot</span>
+          <span class="status-dot bg-emerald-500"></span>
+        </div>
+        <p class="text-sm font-medium text-emerald-400">Actif • Analyse</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 overflow-y-auto pb-24 lg:pb-0">
+    <!-- Top bar -->
+    <header class="sticky top-0 z-30 glass border-b border-slate-800/60 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="text-base sm:text-xl font-semibold text-white truncate">Dashboard Premium</h2>
+          <p class="text-[11px] sm:text-xs text-slate-400 hidden sm:block">Anti-martingale • Sentiment réel • Mobile-first</p>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-slate-800/60">
+            <span class="text-[10px] sm:text-xs text-slate-400">XAU</span>
+            <span id="livePrice" class="mono text-sm sm:text-lg font-semibold text-white">—</span>
+            <span id="priceChange" class="text-[10px] sm:text-xs text-emerald-400">—</span>
+          </div>
+          <button onclick="runAnalysis()" class="px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-dark-950 font-semibold text-xs sm:text-sm hover:from-gold-400 hover:to-gold-500 transition active:scale-95 flex items-center gap-1.5 shadow-lg shadow-gold-500/20">
+            <i class="fas fa-bolt text-xs"></i> <span class="hidden xs:inline">Analyser</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
+
+      <!-- KPI row -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 section-enter">
+        <div class="card p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] sm:text-xs font-medium text-slate-400 uppercase tracking-wider">Capital</span>
+            <i class="fas fa-wallet text-gold-500 text-sm"></i>
+          </div>
+          <p id="equity" class="text-lg sm:text-2xl font-bold text-white mono">$10,000</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">Compte standard</p>
+        </div>
+        <div class="card p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] sm:text-xs font-medium text-slate-400 uppercase tracking-wider">P&L Jour</span>
+            <i class="fas fa-chart-area text-emerald-500 text-sm"></i>
+          </div>
+          <p id="dailyPnL" class="text-lg sm:text-2xl font-bold text-emerald-400 mono">+$0.00</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">Simulation</p>
+        </div>
+        <div class="card p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] sm:text-xs font-medium text-slate-400 uppercase tracking-wider">Risque</span>
+            <i class="fas fa-shield-alt text-blue-400 text-sm"></i>
+          </div>
+          <p class="text-lg sm:text-2xl font-bold text-white mono"><span id="riskPercent">1.0</span>%</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">≈ $<span id="riskAmount">100</span></p>
+        </div>
+        <div class="card p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] sm:text-xs font-medium text-slate-400 uppercase tracking-wider">Skip / Trade</span>
+            <i class="fas fa-brain text-purple-400 text-sm"></i>
+          </div>
+          <p class="text-lg sm:text-2xl font-bold text-white mono"><span id="skipCount">0</span>/<span id="tradeCount">0</span></p>
+          <p class="text-[10px] text-slate-500 mt-0.5">Décisions</p>
+        </div>
+      </div>
+
+      <!-- FEAR & GREED + SENTIMENT -->
+      <div id="sentiment" class="card p-5 sm:p-6 section-enter glow-gold">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+            <i class="fas fa-gauge-high text-gold-500"></i> Fear & Greed + Sentiment XAUUSD
+          </h3>
+          <div class="flex items-center gap-2">
+            <span id="apiStatus" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">Chargement API…</span>
+            <span id="sentimentUpdated" class="text-[10px] text-slate-500"></span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+          <!-- Big Gauge -->
+          <div class="md:col-span-4 flex flex-col items-center justify-center">
+            <div class="relative w-36 h-36 sm:w-40 sm:h-40">
+              <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="2.8"/>
+                <path id="fgArc" class="gauge-fill" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ef4444" stroke-width="2.8" stroke-dasharray="12, 100" stroke-linecap="round"/>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span id="fgScore" class="text-3xl sm:text-4xl font-extrabold text-white mono">—</span>
+                <span id="fgLabel" class="text-xs font-medium text-red-400 mt-0.5">—</span>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2 text-center">Crypto Fear & Greed<br/><span class="text-slate-500">(proxy risque marché)</span></p>
+          </div>
+
+          <!-- Sources + Gold proxy -->
+          <div class="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-slate-400">Or (XAU) Sentiment</span>
+                <i class="fas fa-coins text-gold-500 text-xs"></i>
+              </div>
+              <p id="goldSentLabel" class="text-xl font-bold text-red-400">Extreme Fear</p>
+              <div class="mt-2 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div id="goldSentBar" class="h-full bg-red-500 rounded-full" style="width:12%"></div>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-1.5">Score ~12 • Corrélé marché risque</p>
+            </div>
+            <div class="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-slate-400">News / Social</span>
+                <i class="fas fa-newspaper text-blue-400 text-xs"></i>
+              </div>
+              <p id="newsSentLabel" class="text-xl font-bold text-slate-300">—</p>
+              <div class="mt-2 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div id="newsSentBar" class="h-full bg-blue-500 rounded-full" style="width:40%"></div>
+              </div>
+              <p id="newsSentDetail" class="text-[11px] text-slate-500 mt-1.5">—</p>
+            </div>
+            <div class="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50 sm:col-span-2">
+              <p class="text-xs text-slate-400 mb-2">Historique Fear & Greed (14j)</p>
+              <div class="h-28">
+                <canvas id="fgHistoryChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main analysis grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <!-- Rules -->
+        <div id="rules" class="card p-5 section-enter">
+          <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <i class="fas fa-list-check text-gold-500"></i> 5 Règles Inviolables
+          </h3>
+          <div class="space-y-2.5">
+            <div class="rounded-xl p-3 bg-slate-800/40 border-l-[3px] border-emerald-500">
+              <p class="text-xs font-semibold text-white">R01 • Aucun Martingale</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Taille = ATR live uniquement</p>
+            </div>
+            <div class="rounded-xl p-3 bg-slate-800/40 border-l-[3px] border-emerald-500">
+              <p class="text-xs font-semibold text-white">R02 • Aucun Grid</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Jamais de renforcement</p>
+            </div>
+            <div class="rounded-xl p-3 bg-slate-800/40 border-l-[3px] border-emerald-500">
+              <p class="text-xs font-semibold text-white">R03 • Stop jamais élargi</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Trailing + BE seulement</p>
+            </div>
+            <div class="rounded-xl p-3 bg-slate-800/40 border-l-[3px] border-emerald-500">
+              <p class="text-xs font-semibold text-white">R04 • Droit de ne rien faire</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Skip = fonctionnalité</p>
+            </div>
+            <div class="rounded-xl p-3 bg-slate-800/40 border-l-[3px] border-emerald-500">
+              <p class="text-xs font-semibold text-white">R05 • Exécution locale MT5</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Aucun password cloud</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision engine -->
+        <div class="lg:col-span-2 card p-5 decision-box section-enter">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <i class="fas fa-microchip text-gold-500"></i> Moteur Contextuel + Sentiment
+            </h3>
+            <span id="decisionStatus" class="text-[10px] px-2.5 py-1 rounded-full bg-slate-700 text-slate-300">En attente</span>
+          </div>
+          <div class="grid grid-cols-4 gap-2 mb-4">
+            <div class="bg-slate-900/50 rounded-xl p-2.5 text-center">
+              <p class="text-[10px] text-slate-500">M5</p>
+              <p id="tfM5" class="text-xs font-medium text-slate-300">—</p>
+            </div>
+            <div class="bg-slate-900/50 rounded-xl p-2.5 text-center">
+              <p class="text-[10px] text-slate-500">M15</p>
+              <p id="tfM15" class="text-xs font-medium text-slate-300">—</p>
+            </div>
+            <div class="bg-slate-900/50 rounded-xl p-2.5 text-center">
+              <p class="text-[10px] text-slate-500">H1</p>
+              <p id="tfH1" class="text-xs font-medium text-slate-300">—</p>
+            </div>
+            <div class="bg-slate-900/50 rounded-xl p-2.5 text-center">
+              <p class="text-[10px] text-slate-500">H4</p>
+              <p id="tfH4" class="text-xs font-medium text-slate-300">—</p>
+            </div>
+          </div>
+          <div id="decisionResult" class="rounded-2xl p-4 bg-slate-900/60 border border-slate-700/60">
+            <p class="text-sm text-slate-400 text-center">Appuyez sur <strong class="text-gold-400">Analyser</strong> pour évaluer le marché avec sentiment réel.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TradingView Chart + Log -->
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div class="lg:col-span-3 card p-4 sm:p-5 section-enter overflow-hidden">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <i class="fas fa-chart-candlestick text-gold-500"></i> XAUUSD — TradingView Style
+            </h3>
+            <div class="flex items-center gap-1.5">
+              <button onclick="setChartType('candles')" id="btnCandles" class="text-[10px] px-2.5 py-1 rounded-lg bg-gold-500/20 text-gold-400 font-medium">Chandeliers</button>
+              <button onclick="setChartType('line')" id="btnLine" class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white">Ligne</button>
+              <button onclick="setChartType('area')" id="btnArea" class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white">Area</button>
+            </div>
+          </div>
+          <div id="tvChart" class="w-full h-64 sm:h-72 md:h-80 rounded-xl overflow-hidden bg-[#0b0e11]"></div>
+          <div class="flex items-center justify-between mt-2 text-[10px] text-slate-500">
+            <span>Powered by TradingView Lightweight Charts</span>
+            <span id="chartLastPrice" class="mono text-gold-400">—</span>
+          </div>
+        </div>
+        <div id="history" class="lg:col-span-2 card p-5 section-enter">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <i class="fas fa-list text-gold-500"></i> Journal
+            </h3>
+            <button onclick="clearLog()" class="text-[11px] text-slate-400 hover:text-white">Effacer</button>
+          </div>
+          <div id="tradeLog" class="space-y-2 max-h-64 sm:max-h-80 overflow-y-auto">
+            <p class="text-sm text-slate-500 text-center py-6">Aucune décision.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk controls -->
+      <div class="card p-5 section-enter">
+        <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+          <i class="fas fa-sliders-h text-gold-500"></i> Paramètres Risque
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label class="text-xs text-slate-400 mb-1.5 block">Risque par trade (%)</label>
+            <input type="range" id="riskSlider" min="0.25" max="2" step="0.25" value="1" class="w-full accent-gold-500" oninput="updateRisk(this.value)">
+            <div class="flex justify-between text-[11px] text-slate-500 mt-1">
+              <span>0.25%</span><span class="text-gold-400 font-medium" id="riskDisplay">1.0%</span><span>2%</span>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 mb-1.5 block">Capital ($)</label>
+            <input type="number" id="capitalInput" value="10000" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white mono focus:outline-none focus:border-gold-500" onchange="updateCapital(this.value)">
+          </div>
+        </div>
+      </div>
+
+      <p class="text-[10px] sm:text-[11px] text-slate-600 text-center max-w-2xl mx-auto leading-relaxed pb-2">
+        Simulation éducative. Fear & Greed via API publique alternative.me (crypto). Sentiment or approximé. Aucun ordre réel. Le trading comporte un risque de perte en capital.
+      </p>
+    </div>
+  </main>
+</div>
+
+<!-- Mobile bottom nav -->
+<nav class="bottom-nav lg:hidden">
+  <div class="flex justify-around items-center py-2.5">
+    <a href="#" class="flex flex-col items-center gap-0.5 text-gold-400">
+      <i class="fas fa-chart-line text-sm"></i><span class="text-[10px]">Home</span>
+    </a>
+    <a href="#sentiment" class="flex flex-col items-center gap-0.5 text-slate-400">
+      <i class="fas fa-brain text-sm"></i><span class="text-[10px]">Sentiment</span>
+    </a>
+    <button onclick="runAnalysis()" class="flex flex-col items-center gap-0.5 -mt-4">
+      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-lg shadow-gold-500/30">
+        <i class="fas fa-bolt text-dark-950"></i>
+      </div>
+    </button>
+    <a href="#rules" class="flex flex-col items-center gap-0.5 text-slate-400">
+      <i class="fas fa-shield-alt text-sm"></i><span class="text-[10px]">Règles</span>
+    </a>
+    <a href="#history" class="flex flex-col items-center gap-0.5 text-slate-400">
+      <i class="fas fa-history text-sm"></i><span class="text-[10px]">Log</span>
+    </a>
+  </div>
+</nav>
+
+<script>
+// ===== STATE =====
+let equity=10000, riskPercent=1, dailyPnL=0, skipCount=0, tradeCount=0;
+let decisions=[], priceData=[], fgChart=null;
+let tvChart=null, candleSeries=null, lineSeries=null, areaSeries=null;
+let currentChartType='candles';
+let currentPrice=2647.85;
+let fgData={score:12,label:'Extreme Fear',history:[]};
+let currentSentiment={score:18,label:'Extreme Fear'};
+
+// ===== REAL API: Fear & Greed =====
+async function fetchFearGreed(){
+  try{
+    const res=await fetch('https://api.alternative.me/fng/?limit=14&date_format=world');
+    const json=await res.json();
+    if(json&&json.data&&json.data.length){
+      const latest=json.data[0];
+      fgData.score=parseInt(latest.value,10);
+      fgData.label=latest.value_classification;
+      fgData.history=json.data.slice().reverse().map(d=>({date:d.timestamp,value:parseInt(d.value,10)}));
+      document.getElementById('apiStatus').textContent='API Live';
+      document.getElementById('apiStatus').className='text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400';
+      updateFgUI();
+      return true;
+    }
+  }catch(e){
+    console.warn('F&G API failed',e);
+    document.getElementById('apiStatus').textContent='Mode offline';
+    document.getElementById('apiStatus').className='text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400';
+    // fallback realistic
+    fgData={score:12,label:'Extreme Fear',history:generateFallbackHistory()};
+    updateFgUI();
+  }
+  return false;
+}
+
+function generateFallbackHistory(){
+  const h=[];let v=28;
+  for(let i=13;i>=0;i--){
+    v=Math.max(8,Math.min(45,v+(Math.random()-0.55)*8));
+    h.push({date:`${(i+1).toString().padStart(2,'0')}-11-2026`,value:Math.round(v)});
+  }
+  return h;
+}
+
+function updateFgUI(){
+  const s=fgData.score;
+  const color=s<=25?'#ef4444':s<=45?'#f97316':s<=55?'#eab308':s<=75?'#22c55e':'#10b981';
+  document.getElementById('fgScore').textContent=s;
+  document.getElementById('fgLabel').textContent=fgData.label;
+  document.getElementById('fgLabel').style.color=color;
+  document.getElementById('fgArc').setAttribute('stroke-dasharray',`${s},100`);
+  document.getElementById('fgArc').setAttribute('stroke',color);
+
+  // Gold sentiment (currently extreme fear ~12 from market data)
+  const goldScore=Math.max(5,Math.min(40,s+Math.round((Math.random()-0.3)*6)));
+  document.getElementById('goldSentLabel').textContent=goldScore<=25?'Extreme Fear':goldScore<=45?'Fear':'Neutral';
+  document.getElementById('goldSentLabel').style.color=goldScore<=25?'#ef4444':'#f97316';
+  document.getElementById('goldSentBar').style.width=goldScore+'%';
+  document.getElementById('goldSentBar').style.background=goldScore<=25?'#ef4444':'#f97316';
+
+  // News/social derived
+  const news=Math.max(10,Math.min(55,s+Math.round((Math.random()-0.2)*15)));
+  document.getElementById('newsSentLabel').textContent=news<=30?'Bearish':news<=50?'Neutre':'Bullish';
+  document.getElementById('newsSentLabel').className='text-xl font-bold '+(news<=30?'text-red-400':news<=50?'text-slate-300':'text-emerald-400');
+  document.getElementById('newsSentBar').style.width=news+'%';
+  document.getElementById('newsSentDetail').textContent=`Score ${news}/100 • Corrélé F&G`;
+
+  currentSentiment={score:goldScore,label:document.getElementById('goldSentLabel').textContent};
+  document.getElementById('sentimentUpdated').textContent='MAJ '+new Date().toLocaleTimeString('fr-FR');
+
+  // History chart
+  if(fgChart){
+    fgChart.data.labels=fgData.history.map(d=>d.date.slice(0,5));
+    fgChart.data.datasets[0].data=fgData.history.map(d=>d.value);
+    fgChart.update();
+  }else{
+    initFgChart();
+  }
+}
+
+function initFgChart(){
+  const ctx=document.getElementById('fgHistoryChart').getContext('2d');
+  fgChart=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:fgData.history.map(d=>d.date.slice(0,5)),
+      datasets:[{
+        data:fgData.history.map(d=>d.value),
+        borderColor:'#f59e0b',
+        backgroundColor:'rgba(245,158,11,0.1)',
+        borderWidth:2,fill:true,tension:0.35,pointRadius:2,pointHoverRadius:4
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f172a',titleColor:'#f59e0b',bodyColor:'#e2e8f0'}},
+      scales:{
+        x:{display:true,grid:{display:false},ticks:{color:'#64748b',font:{size:9},maxTicksLimit:7}},
+        y:{min:0,max:100,grid:{color:'rgba(51,65,85,0.3)'},ticks:{color:'#64748b',font:{size:9},stepSize:25}}
+      }
+    }
+  });
+}
+
+// ===== PRICE =====
+function generatePriceHistory(){
+  priceData=[];
+  let p=2620;
+  const now=Math.floor(Date.now()/1000);
+  for(let i=0;i<120;i++){
+    const open=p;
+    const change=(Math.random()-0.48)*6;
+    const close=parseFloat((p+change).toFixed(2));
+    const high=parseFloat((Math.max(open,close)+(Math.random()*2.5)).toFixed(2));
+    const low=parseFloat((Math.min(open,close)-(Math.random()*2.5)).toFixed(2));
+    priceData.push({
+      time: now - (120-i)*300, // 5min bars
+      open, high, low, close
+    });
+    p=close;
+  }
+  currentPrice=priceData[priceData.length-1].close;
+}
+
+function initTvChart(){
+  const container=document.getElementById('tvChart');
+  if(!container || typeof LightweightCharts==='undefined'){
+    console.warn('LightweightCharts not loaded');
+    return;
+  }
+  tvChart=LightweightCharts.createChart(container,{
+    autoSize:true,
+    layout:{
+      background:{type:'solid',color:'#0b0e11'},
+      textColor:'#94a3b8',
+      fontFamily:'Inter, system-ui, sans-serif'
+    },
+    grid:{
+      vertLines:{color:'rgba(51,65,85,0.25)'},
+      horzLines:{color:'rgba(51,65,85,0.25)'}
+    },
+    crosshair:{
+      mode:LightweightCharts.CrosshairMode.Normal,
+      vertLine:{color:'rgba(245,158,11,0.4)',width:1,style:LightweightCharts.LineStyle.Dashed},
+      horzLine:{color:'rgba(245,158,11,0.4)',width:1,style:LightweightCharts.LineStyle.Dashed}
+    },
+    rightPriceScale:{
+      borderColor:'rgba(51,65,85,0.4)',
+      scaleMargins:{top:0.1,bottom:0.1}
+    },
+    timeScale:{
+      borderColor:'rgba(51,65,85,0.4)',
+      timeVisible:true,
+      secondsVisible:false
+    },
+    handleScroll:true,
+    handleScale:true
+  });
+
+  candleSeries=tvChart.addCandlestickSeries({
+    upColor:'#10b981',
+    downColor:'#ef4444',
+    borderUpColor:'#10b981',
+    borderDownColor:'#ef4444',
+    wickUpColor:'#10b981',
+    wickDownColor:'#ef4444'
+  });
+  candleSeries.setData(priceData);
+
+  // Prepare line/area data
+  const lineData=priceData.map(d=>({time:d.time,value:d.close}));
+  
+  lineSeries=tvChart.addLineSeries({
+    color:'#f59e0b',
+    lineWidth:2,
+    visible:false
+  });
+  lineSeries.setData(lineData);
+
+  areaSeries=tvChart.addAreaSeries({
+    topColor:'rgba(245,158,11,0.35)',
+    bottomColor:'rgba(245,158,11,0.02)',
+    lineColor:'#f59e0b',
+    lineWidth:2,
+    visible:false
+  });
+  areaSeries.setData(lineData);
+
+  tvChart.timeScale().fitContent();
+  document.getElementById('chartLastPrice').textContent='$'+currentPrice.toFixed(2);
+}
+
+function setChartType(type){
+  currentChartType=type;
+  if(!candleSeries)return;
+  candleSeries.applyOptions({visible:type==='candles'});
+  lineSeries.applyOptions({visible:type==='line'});
+  areaSeries.applyOptions({visible:type==='area'});
+  // button styles
+  ['Candles','Line','Area'].forEach(t=>{
+    const btn=document.getElementById('btn'+t);
+    if(!btn)return;
+    if(t.toLowerCase()===type || (t==='Candles'&&type==='candles')){
+      btn.className='text-[10px] px-2.5 py-1 rounded-lg bg-gold-500/20 text-gold-400 font-medium';
+    }else{
+      btn.className='text-[10px] px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white';
+    }
+  });
+}
+
+function tickPrice(){
+  if(!priceData.length || !candleSeries)return;
+  const last=priceData[priceData.length-1];
+  const ch=(Math.random()-0.5)*2.8;
+  const open=last.close;
+  const close=parseFloat((open+ch).toFixed(2));
+  const high=parseFloat((Math.max(open,close)+Math.random()*1.2).toFixed(2));
+  const low=parseFloat((Math.min(open,close)-Math.random()*1.2).toFixed(2));
+  const newBar={
+    time: last.time + 300,
+    open, high, low, close
+  };
+  priceData.push(newBar);
+  if(priceData.length>150)priceData.shift();
+  currentPrice=close;
+
+  candleSeries.update(newBar);
+  lineSeries.update({time:newBar.time,value:close});
+  areaSeries.update({time:newBar.time,value:close});
+
+  document.getElementById('livePrice').textContent=currentPrice.toLocaleString('en-US',{minimumFractionDigits:2});
+  document.getElementById('chartLastPrice').textContent='$'+currentPrice.toFixed(2);
+  const pct=((ch/open)*100).toFixed(2);
+  const el=document.getElementById('priceChange');
+  el.textContent=(ch>=0?'+':'')+pct+'%';
+  el.className='text-[10px] sm:text-xs '+(ch>=0?'text-emerald-400':'text-red-400');
+}
+
+// ===== RISK =====
+function updateRisk(v){riskPercent=parseFloat(v);document.getElementById('riskDisplay').textContent=riskPercent.toFixed(2)+'%';document.getElementById('riskPercent').textContent=riskPercent.toFixed(1);document.getElementById('riskAmount').textContent=Math.round(equity*riskPercent/100);}
+function updateCapital(v){equity=parseFloat(v)||10000;document.getElementById('equity').textContent='$'+equity.toLocaleString('en-US');document.getElementById('riskAmount').textContent=Math.round(equity*riskPercent/100);}
+
+// ===== DECISION ENGINE =====
+function runAnalysis(){
+  const st=document.getElementById('decisionStatus');
+  st.textContent='Analyse…';st.className='text-[10px] px-2.5 py-1 rounded-full bg-gold-500/20 text-gold-400';
+  setTimeout(()=>{
+    const r=evaluateMarket();
+    displayDecision(r);logDecision(r);
+    st.textContent=r.action==='SKIP'?'Skip':'Signal';
+    st.className='text-[10px] px-2.5 py-1 rounded-full '+(r.action==='SKIP'?'bg-slate-700 text-slate-300':'bg-emerald-500/20 text-emerald-400');
+  },900);
+}
+
+function evaluateMarket(){
+  // --- Multi-TF réaliste (biaisé par Fear & Greed) ---
+  const fg = fgData.score;
+  const fgLabel = fgData.label || 'N/A';
+  const sentLabel = (typeof currentSentiment !== 'undefined' && currentSentiment.label) ? currentSentiment.label : 'N/A';
+
+  // RSI simulés cohérents avec le régime de marché
+  let baseRsi;
+  if(fg <= 20) baseRsi = 28 + Math.random()*18;       // zone oversold / fear
+  else if(fg >= 80) baseRsi = 55 + Math.random()*25;  // zone overbought / greed
+  else baseRsi = 40 + Math.random()*25;
+
+  const rsiM5  = Math.max(5, Math.min(95, baseRsi + (Math.random()-0.5)*12));
+  const rsiM15 = Math.max(5, Math.min(95, baseRsi + (Math.random()-0.5)*8));
+  const rsiH1  = Math.max(5, Math.min(95, baseRsi + (Math.random()-0.5)*6));
+  const rsiH4  = Math.max(5, Math.min(95, baseRsi + (Math.random()-0.5)*4));
+  const rsi = rsiH1;
+
+  // Direction par TF à partir du RSI
+  const dirFromRsi = (v) => v < 38 ? 'Achat' : (v > 62 ? 'Vente' : 'Neutre');
+  const tfs = {
+    M5:  dirFromRsi(rsiM5),
+    M15: dirFromRsi(rsiM15),
+    H1:  dirFromRsi(rsiH1),
+    H4:  dirFromRsi(rsiH4)
+  };
+
+  // Score d'alignement (0-6)
+  let align = 0;
+  if(tfs.H4 === tfs.H1 && tfs.H4 !== 'Neutre') align += 2;
+  if(tfs.H1 === tfs.M15 && tfs.H1 !== 'Neutre') align += 2;
+  if(tfs.M15 === tfs.M5 && tfs.M15 !== 'Neutre') align += 1;
+  if(tfs.H4 === tfs.M5 && tfs.H4 !== 'Neutre') align += 1;
+
+  // Force de contexte 0-100 (pénalisée en extrêmes F&G)
+  let ctxScore = 35 + align * 8 + (Math.random()*15);
+  if(fg <= 15 || fg >= 85) ctxScore *= 0.45;          // Extreme → très sélectif
+  else if(fg <= 25 || fg >= 75) ctxScore *= 0.65;
+  else if(fg > 40 && fg < 60) ctxScore = Math.min(100, ctxScore * 1.15);
+  ctxScore = Math.max(5, Math.min(98, ctxScore));
+
+  const atr = 6 + Math.random()*14 + (fg <= 25 ? 3 : 0); // volatilité un peu plus haute en fear
+
+  let action = 'SKIP';
+  let direction = null;
+  let reason = '';
+  let conf = 0;
+  let ruleHit = 'R04';
+
+  // --- Règles de décision (anti-martingale + anti-foule) ---
+  if(fg <= 15){
+    // Extreme Fear : skip quasi systématique sauf alignement parfait + RSI très bas
+    if(align >= 5 && rsiH4 < 32 && tfs.H4 === 'Achat'){
+      action = 'TRADE'; direction = 'BUY';
+      conf = Math.min(78, 50 + align * 4);
+      reason = `Extreme Fear (${fg}). Alignement TF exceptionnel + RSI H4 survente. Contre-tendance contrôlée.`;
+      ruleHit = 'R04-exception';
+    }else{
+      reason = `Extreme Fear (${fg} – ${fgLabel}). Filtre anti-foule actif. R04 : droit de ne rien faire.`;
+      ruleHit = 'R04';
+    }
+  }else if(fg >= 85){
+    if(align >= 5 && rsiH4 > 68 && tfs.H4 === 'Vente'){
+      action = 'TRADE'; direction = 'SELL';
+      conf = Math.min(78, 50 + align * 4);
+      reason = `Extreme Greed (${fg}). Alignement TF exceptionnel + RSI H4 surachat. Contre-tendance contrôlée.`;
+      ruleHit = 'R04-exception';
+    }else{
+      reason = `Extreme Greed (${fg} – ${fgLabel}). Filtre anti-foule actif. R04 : inaction.`;
+      ruleHit = 'R04';
+    }
+  }else if(align >= 4 && ctxScore >= 58 && rsi > 32 && rsi < 68){
+    // Conditions normales favorables
+    if(tfs.H1 === 'Achat' && tfs.H4 === 'Achat'){
+      action = 'TRADE'; direction = 'BUY';
+      conf = Math.min(92, 55 + align * 6 + (ctxScore-50)/3);
+      reason = `Alignement multi-TF haussier. F&G ${fg} (${fgLabel}). Sentiment: ${sentLabel}.`;
+    }else if(tfs.H1 === 'Vente' && tfs.H4 === 'Vente'){
+      action = 'TRADE'; direction = 'SELL';
+      conf = Math.min(92, 55 + align * 6 + (ctxScore-50)/3);
+      reason = `Alignement multi-TF baissier. F&G ${fg} (${fgLabel}). Sentiment: ${sentLabel}.`;
+    }else{
+      reason = `Direction H1/H4 non confirmée. F&G ${fg}. R04 : skip.`;
+    }
+  }else if(ctxScore < 45 || align < 2){
+    reason = `Contexte faible (score ${ctxScore.toFixed(0)}, align ${align}/6). F&G ${fg}. R04 : inaction.`;
+  }else{
+    reason = `Conditions mitigées. F&G ${fg} (${fgLabel}). Align ${align}/6. Skip (R04).`;
+  }
+
+  // R01 sizing
+  const risk$ = equity * riskPercent / 100;
+  const stop = atr * 1.5;
+  const lot = Math.max(0.01, parseFloat((risk$ / (stop * 100)).toFixed(2)));
+
+  return {
+    timestamp: new Date(),
+    action, direction, tfs,
+    rsi: rsi.toFixed(1),
+    atr: atr.toFixed(1),
+    contextStrength: ctxScore.toFixed(0),
+    confidence: conf.toFixed(0),
+    reason, ruleHit,
+    lotSize: lot,
+    stopDistance: stop.toFixed(1),
+    risk$: risk$.toFixed(0),
+    price: currentPrice,
+    fg, fgLabel,
+    align
+  };
+}
+
+function displayDecision(r){
+  const cm={'Achat':'text-emerald-400','Vente':'text-red-400','Neutre':'text-slate-400'};
+  ['M5','M15','H1','H4'].forEach(tf=>{
+    const el=document.getElementById('tf'+tf);
+    el.textContent=r.tfs[tf];el.className='text-xs font-medium '+cm[r.tfs[tf]];
+  });
+  const box=document.getElementById('decisionResult');
+  if(r.action==='SKIP'){
+    box.innerHTML=`<div class="flex items-start gap-3"><div class="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center shrink-0"><i class="fas fa-pause text-slate-300"></i></div><div class="flex-1"><p class="font-semibold text-slate-300">SKIP — aucune position <span class="text-[10px] text-slate-500 font-normal ml-1">${r.ruleHit||'R04'}</span></p><p class="text-xs text-slate-400 mt-1">${r.reason}</p><div class="flex flex-wrap gap-2 mt-2 text-[11px] text-slate-500"><span class="bg-slate-800/60 px-2 py-0.5 rounded-md">Contexte ${r.contextStrength}%</span><span class="bg-slate-800/60 px-2 py-0.5 rounded-md">Align ${r.align||0}/6</span><span class="bg-slate-800/60 px-2 py-0.5 rounded-md">RSI ${r.rsi}</span><span class="bg-slate-800/60 px-2 py-0.5 rounded-md">F&amp;G ${r.fg}</span></div></div></div>`;
+    skipCount++;
+  }else{
+    const buy=r.direction==='BUY';
+    box.innerHTML=`<div class="flex items-start gap-3"><div class="w-10 h-10 rounded-xl ${buy?'bg-emerald-500/20':'bg-red-500/20'} flex items-center justify-center shrink-0"><i class="fas fa-arrow-${buy?'up':'down'} ${buy?'text-emerald-400':'text-red-400'}"></i></div><div class="flex-1"><p class="font-semibold ${buy?'text-emerald-400':'text-red-400'}">${r.direction} @ $${r.price.toFixed(2)} <span class="text-[10px] text-slate-400 ml-1">${r.confidence}%</span></p><p class="text-xs text-slate-400 mt-1">${r.reason}</p><div class="grid grid-cols-3 gap-2 mt-2 text-[11px]"><div class="bg-slate-800/50 rounded-lg p-1.5"><span class="text-slate-500">Lot</span><p class="text-white mono">${r.lotSize}</p></div><div class="bg-slate-800/50 rounded-lg p-1.5"><span class="text-slate-500">Stop</span><p class="text-white mono">${r.stopDistance}$</p></div><div class="bg-slate-800/50 rounded-lg p-1.5"><span class="text-slate-500">Risque</span><p class="text-white mono">$${r.risk$}</p></div></div></div></div>`;
+    tradeCount++;
+  }
+  document.getElementById('skipCount').textContent=skipCount;
+  document.getElementById('tradeCount').textContent=tradeCount;
+}
+
+function logDecision(r){
+  const log=document.getElementById('tradeLog');
+  if(decisions.length===0)log.innerHTML='';
+  decisions.unshift(r);if(decisions.length>15)decisions.pop();
+  const time=r.timestamp.toLocaleTimeString('fr-FR');
+  const cls=r.action==='SKIP'?'border-slate-600 bg-slate-800/30':(r.direction==='BUY'?'border-emerald-500 bg-emerald-500/10':'border-red-500 bg-red-500/10');
+  const icon=r.action==='SKIP'?'fa-pause':(r.direction==='BUY'?'fa-arrow-up':'fa-arrow-down');
+  const entry=document.createElement('div');
+  entry.className=`rounded-xl p-2.5 border-l-[3px] ${cls} flex justify-between gap-2`;
+  entry.innerHTML=`<div class="min-w-0"><p class="text-xs font-medium text-white">${r.action==='SKIP'?'SKIP':r.direction} <span class="text-slate-500 font-normal">• ${time}</span> <span class="text-[10px] text-slate-600">${r.ruleHit||''}</span></p><p class="text-[11px] text-slate-400 truncate">${r.reason}</p></div><div class="text-right text-[10px] text-slate-500 mono shrink-0">F&G ${r.fg}<br>Ctx ${r.contextStrength}%</div>`;
+  log.prepend(entry);
+}
+function clearLog(){decisions=[];skipCount=0;tradeCount=0;document.getElementById('tradeLog').innerHTML='<p class="text-sm text-slate-500 text-center py-6">Aucune décision.</p>';document.getElementById('skipCount').textContent=0;document.getElementById('tradeCount').textContent=0;}
+
+// ===== INIT =====
+async function init(){
+  generatePriceHistory();
+  // small delay so container has size
+  setTimeout(()=>{ initTvChart(); }, 80);
+  document.getElementById('livePrice').textContent=currentPrice.toLocaleString('en-US',{minimumFractionDigits:2});
+  await fetchFearGreed();
+  setInterval(tickPrice,3200);
+  setInterval(fetchFearGreed,5*60*1000);
+}
+init();
+
+// Resize handling
+window.addEventListener('resize',()=>{
+  if(tvChart) tvChart.applyOptions({width: document.getElementById('tvChart').clientWidth});
+});
+</script>
+</body>
+</html>
