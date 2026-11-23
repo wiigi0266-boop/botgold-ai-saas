@@ -1,67 +1,42 @@
-# BotGold AI — Premium SaaS Trading Dashboard
+# BotGold AI — SaaS Trading Platform (Prototype)
 
-Plateforme SaaS professionnelle reproduisant la stratégie **anti-martingale contextuelle** (XAUUSD / MT5).
+Plateforme SaaS professionnelle reproduisant la stratégie anti-martingale contextuelle présentée dans la vidéo BotGold (XAUUSD / MT5).
 
-![Status](https://img.shields.io/badge/status-prototype-orange)
-![License](https://img.shields.io/badge/license-MIT-blue)
-
-## Contenu du dépôt
+## Contenu du projet
 
 ```
-botgold-ai-saas/
+botgold-saas/
 ├── dashboard/
-│   └── index.html              # Dashboard premium (mobile-first)
-├── mql5/
-│   ├── BotGold_AI.mq5          # Expert Advisor MT5
-│   └── README_EA.md            # Guide installation EA
+│   └── index.html          ← Dashboard interactif complet (ouvrir dans un navigateur)
 ├── docs/
-│   ├── CAHIER_DES_CHARGES.md   # Spécifications techniques
-│   └── Cahier_des_Charges_BotGold_AI.pdf
+│   └── CAHIER_DES_CHARGES.md  ← Spécifications techniques détaillées
 └── README.md
 ```
 
-## Démarrage rapide (Dashboard)
+## Comment tester le Dashboard
 
-1. Ouvre `dashboard/index.html` dans Chrome / Firefox / Safari  
-2. Le Fear & Greed se charge via API publique  
-3. Appuie sur le bouton **éclair** pour lancer une analyse  
+1. Ouvrez le fichier `dashboard/index.html` dans un navigateur moderne (Chrome, Firefox, Edge, Safari).
+2. Cliquez sur **« Lancer Analyse »** pour simuler une décision du bot.
+3. Ajustez le risque avec le slider.
+4. Observez le journal des décisions (trades vs skips).
 
-Fonctionne sur mobile Android.
+Le dashboard est entièrement autonome (pas besoin de serveur).
 
-## Expert Advisor MQL5
+## Fonctionnalités du prototype
 
-Voir [`mql5/README_EA.md`](mql5/README_EA.md).
+- Interface dark moderne type plateforme de trading
+- Affichage des 5 règles inviolables
+- Moteur de décision simulé (multi-timeframe + contexte)
+- Calcul de taille de lot basé sur la volatilité (ATR)
+- Journal des décisions avec raisons
+- Graphique de prix animé
+- Paramètres de risque configurables
+- KPI : ratio Skip / Trade
 
-1. Copier `BotGold_AI.mq5` dans `MQL5/Experts/`
-2. Compiler (F7) dans MetaEditor
-3. Attacher sur graphique **XAUUSD M5** en compte **démo**
+## Prochaines étapes
 
-## Les 5 règles inviolables
+Voir le cahier des charges pour la roadmap complète (EA MQL5, backend, billing, etc.).
 
-| Code | Règle |
-|------|--------|
-| R01 | Aucun Martingale — sizing ATR + risque % uniquement |
-| R02 | Aucun Grid — une seule position à la fois |
-| R03 | Stop jamais élargi — trailing + break-even seulement |
-| R04 | Droit de ne rien faire — skip si contexte insuffisant |
-| R05 | Exécution locale — aucun mot de passe cloud |
+---
 
-## Fonctionnalités dashboard
-
-- Fear & Greed Index réel (API alternative.me) + historique 14j  
-- Sentiment Or / News-Social corrélés  
-- Graphique style TradingView (chandeliers / ligne / area)  
-- Moteur de décision multi-TF + filtre anti-foule  
-- Journal des décisions (SKIP / TRADE)  
-- Paramètres de risque (capital + %)  
-- UI mobile-first premium  
-
-## Disclaimer
-
-Prototype **éducatif**. Aucun ordre réel n’est envoyé depuis le dashboard.  
-Le trading à effet de levier comporte un risque de perte totale du capital.  
-Testez toujours l’EA en compte démo avant toute utilisation réelle.
-
-## Licence
-
-MIT
+**Disclaimer** : Ceci est un prototype éducatif et de démonstration. Aucun ordre réel n’est exécuté. Le trading comporte un risque de perte en capital.
