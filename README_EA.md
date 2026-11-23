@@ -1,43 +1,44 @@
-# BotGold AI — Expert Advisor MQL5
+# BotGold AI — Expert Advisor MT5 (v2.00)
 
-EA Advisor anti-martingale contextuel pour **XAUUSD** (MetaTrader 5).
-
-## Les 5 règles intégrées
-
-| Code | Règle | Implémentation |
-|------|-------|----------------|
-| **R01** | Aucun Martingale | Taille = ATR × risque % uniquement (`CalcLotSize`) |
-| **R02** | Aucun Grid | Une seule position à la fois (`CountOurPositions`) |
-| **R03** | Stop jamais élargi | Trailing + Break-even uniquement (`ManageOpenPosition`) |
-| **R04** | Droit de ne rien faire | Score contexte < seuil → SKIP (`EvaluateContext`) |
-| **R05** | Exécution locale | Tourne uniquement dans le MT5 de l’utilisateur |
+EA anti-martingale contextuel pour **XAUUSD** (MetaTrader 5).
 
 ## Installation
 
-1. Ouvre MetaTrader 5
-2. `Fichier` → `Ouvrir le dossier de données`
-3. Copie `BotGold_AI.mq5` dans `MQL5/Experts/`
-4. Dans MT5 : `Navigateur` → clic droit `Experts` → `Actualiser`
-5. Compile (F7 dans MetaEditor)
-6. Glisse l’EA sur un graphique **XAUUSD** (M5 recommandé)
+1. Ouvre MetaTrader 5 sur PC
+2. Menu **Fichier → Ouvrir le dossier de données**
+3. Place `BotGold_AI.mq5` dans `MQL5/Experts/`
+4. Dans MetaEditor : ouvre le fichier → **Compile** (F7)
+5. Sur un graphique **XAUUSD M5** : glisse l’EA depuis le Navigateur
+6. Autorise le trading automatisé (bouton AutoTrading)
+7. **Compte démo uniquement** pour les premiers tests
 
 ## Paramètres principaux
 
-- **InpRiskPercent** : risque par trade (défaut 1 %)
-- **InpMinContextScore** : score minimum pour ouvrir (défaut 55)
-- **InpSL_ATR_Mult / InpTP_ATR_Mult** : stops basés sur ATR H1
-- **InpUseTrailing** : break-even + trailing (jamais élargir le SL)
-- **InpMaxTradesPerDay** : limite de fréquence
+| Paramètre | Défaut | Description |
+|-----------|--------|-------------|
+| InpRiskPercent | 1.0 | Risque par trade en % du capital |
+| InpMinContextScore | 58 | Score minimum pour ouvrir (R04) |
+| InpMaxTradesPerDay | 3 | Limite journalière |
+| InpSkipExtremeFear | true | Skip fort en Extreme Fear |
+| InpFearGreedProxy | 18 | Seuil proxy Fear |
+| InpUseSessionFilter | true | Filtre horaires (7h–21h UTC) |
+| InpSL_ATR_Mult | 1.5 | Stop = ATR × 1.5 |
+| InpTP_ATR_Mult | 2.2 | TP = ATR × 2.2 |
 
-## Fonctionnement
+## Les 5 règles
 
-1. Nouvelle bougie M5
-2. Calcul score multi-TF (M5 / M15 / H1 / H4)
-3. Si score ≥ seuil et direction claire → calcul lot ATR + risque %
-4. Ouverture avec SL/TP fixes
-5. Gestion : BE puis trailing (R03)
+- **R01** — Aucun martingale : lot = risque % / distance SL (ATR)
+- **R02** — Aucun grid : une seule position à la fois
+- **R03** — Stop jamais élargi : break-even + trailing uniquement
+- **R04** — Droit de ne rien faire : skip si score < seuil ou Extreme Fear/Greed
+- **R05** — Exécution locale : aucun cloud / mot de passe distant
 
-## Avertissement
+## Journal
 
-Prototype éducatif. Testez d’abord en **compte démo**.  
-Le trading à effet de levier comporte un risque de perte totale du capital.
+Onglet **Experts** dans MT5 :
+- SKIP — Extreme Fear proxy → filtre anti-foule
+- TRADE BUY/SELL | Lot=... | Score=... → entrée prise
+
+## Disclaimer
+
+Prototype éducatif. Testez toujours en **démo**.
