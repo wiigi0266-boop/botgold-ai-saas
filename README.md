@@ -1,42 +1,60 @@
-# BotGold AI — SaaS Trading Platform (Prototype)
+# BotGold AI — Premium SaaS Trading Dashboard
 
-Plateforme SaaS professionnelle reproduisant la stratégie anti-martingale contextuelle présentée dans la vidéo BotGold (XAUUSD / MT5).
+Plateforme SaaS anti-martingale contextuelle (XAUUSD / MT5).
 
-## Contenu du projet
+## Contenu
 
 ```
-botgold-saas/
-├── dashboard/
-│   └── index.html          ← Dashboard interactif complet (ouvrir dans un navigateur)
-├── docs/
-│   └── CAHIER_DES_CHARGES.md  ← Spécifications techniques détaillées
+botgold-ai-saas/
+├── index.html              # Dashboard premium (mobile-first)
+├── BotGold_AI.mq5          # Expert Advisor MT5 v2
+├── README_EA.md
+├── backend/                # API FastAPI (historique décisions)
+│   ├── main.py
+│   ├── requirements.txt
+│   └── README.md
+├── CAHIER_DES_CHARGES.md
 └── README.md
 ```
 
-## Comment tester le Dashboard
+## Dashboard
 
-1. Ouvrez le fichier `dashboard/index.html` dans un navigateur moderne (Chrome, Firefox, Edge, Safari).
-2. Cliquez sur **« Lancer Analyse »** pour simuler une décision du bot.
-3. Ajustez le risque avec le slider.
-4. Observez le journal des décisions (trades vs skips).
+Ouvre `index.html` ou :
+**https://raw.githack.com/wiigi0266-boop/botgold-ai-saas/main/index.html**
 
-Le dashboard est entièrement autonome (pas besoin de serveur).
+- Fear & Greed réel (API alternative.me)
+- Journal persistant (localStorage)
+- Envoi optionnel vers l’API backend
 
-## Fonctionnalités du prototype
+### Brancher l’API (optionnel)
 
-- Interface dark moderne type plateforme de trading
-- Affichage des 5 règles inviolables
-- Moteur de décision simulé (multi-timeframe + contexte)
-- Calcul de taille de lot basé sur la volatilité (ATR)
-- Journal des décisions avec raisons
-- Graphique de prix animé
-- Paramètres de risque configurables
-- KPI : ratio Skip / Trade
+Dans la console navigateur :
+```js
+localStorage.setItem('botgold_api_url', 'https://ton-api.railway.app')
+```
 
-## Prochaines étapes
+## EA MQL5
 
-Voir le cahier des charges pour la roadmap complète (EA MQL5, backend, billing, etc.).
+Voir `README_EA.md` — compiler dans MetaEditor, attacher sur XAUUSD M5 démo.
 
----
+## Backend
 
-**Disclaimer** : Ceci est un prototype éducatif et de démonstration. Aucun ordre réel n’est exécuté. Le trading comporte un risque de perte en capital.
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+## Les 5 règles
+
+| Code | Règle |
+|------|--------|
+| R01 | Aucun Martingale |
+| R02 | Aucun Grid |
+| R03 | Stop jamais élargi |
+| R04 | Droit de ne rien faire |
+| R05 | Exécution locale MT5 |
+
+## Disclaimer
+
+Prototype éducatif. Aucun ordre réel depuis le dashboard. Trading = risque de perte.

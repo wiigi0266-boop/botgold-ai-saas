@@ -760,26 +760,125 @@ function displayDecision(r){
   document.getElementById('tradeCount').textContent=tradeCount;
 }
 
-function logDecision(r){
+// ===== PERSISTENCE (localStorage + API optionnelle) =====
+const STORAGE_KEY = 'botgold_decisions_v1';
+const API_URL = localStorage.getItem('botgold_api_url') || ''; // ex: https://xxx.railway.app
+
+function serializeDecision(r){
+  return {
+    action: r.action,
+    direction: r.direction,
+    price: r.price,
+    score: r.confidence ? parseInt(r.confidence) : (r.score || null),
+    context_strength: r.contextStrength ? parseFloat(r.contextStrength) : null,
+    fg_score: r.fg,
+    rsi: r.rsi ? parseFloat(r.rsi) : null,
+    reason: r.reason || '',
+    rule_hit: r.ruleHit || null,
+    lot_size: r.lotSize || null,
+    risk_percent: typeof riskPercent !== 'undefined' ? riskPercent : null,
+    source: 'dashboard',
+    ts: (r.timestamp instanceof Date ? r.timestamp : new Date()).toISOString()
+  };
+}
+
+function saveLocal(){
+  try{
+    const payload = decisions.slice(0,50).map(serializeDecision);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }catch(e){}
+}
+
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return [];
+    return JSON.parse(raw);
+  }catch(e){ return []; }
+}
+
+async function postToApi(r){
+  if(!API_URL) return;
+  try{
+    await fetch(API_URL.replace(/\/$/,'') + '/decisions', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(serializeDecision(r))
+    });
+  }catch(e){ console.warn('API post failed', e); }
+}
+
+function renderLogEntry(r, prepend=true){
   const log=document.getElementById('tradeLog');
-  if(decisions.length===0)log.innerHTML='';
-  decisions.unshift(r);if(decisions.length>15)decisions.pop();
-  const time=r.timestamp.toLocaleTimeString('fr-FR');
-  const cls=r.action==='SKIP'?'border-slate-600 bg-slate-800/30':(r.direction==='BUY'?'border-emerald-500 bg-emerald-500/10':'border-red-500 bg-red-500/10');
-  const icon=r.action==='SKIP'?'fa-pause':(r.direction==='BUY'?'fa-arrow-up':'fa-arrow-down');
+  const empty = log.querySelector('p.text-center');
+  if(empty) empty.remove();
+  const ts = r.timestamp instanceof Date ? r.timestamp : new Date(r.ts || r.timestamp || Date.now());
+  const time = ts.toLocaleTimeString('fr-FR');
+  const action = r.action;
+  const direction = r.direction;
+  const cls = action==='SKIP' ? 'border-slate-600 bg-slate-800/30' : (direction==='BUY'?'border-emerald-500 bg-emerald-500/10':'border-red-500 bg-red-500/10');
   const entry=document.createElement('div');
   entry.className=`rounded-xl p-2.5 border-l-[3px] ${cls} flex justify-between gap-2`;
-  entry.innerHTML=`<div class="min-w-0"><p class="text-xs font-medium text-white">${r.action==='SKIP'?'SKIP':r.direction} <span class="text-slate-500 font-normal">• ${time}</span> <span class="text-[10px] text-slate-600">${r.ruleHit||''}</span></p><p class="text-[11px] text-slate-400 truncate">${r.reason}</p></div><div class="text-right text-[10px] text-slate-500 mono shrink-0">F&G ${r.fg}<br>Ctx ${r.contextStrength}%</div>`;
-  log.prepend(entry);
+  const label = action==='SKIP' ? 'SKIP' : (direction || 'TRADE');
+  const fg = r.fg != null ? r.fg : (r.fg_score != null ? r.fg_score : '—');
+  const ctx = r.contextStrength != null ? r.contextStrength : (r.context_strength != null ? r.context_strength : '—');
+  entry.innerHTML=`<div class="min-w-0"><p class="text-xs font-medium text-white">${label} <span class="text-slate-500 font-normal">• ${time}</span> <span class="text-[10px] text-slate-600">${r.ruleHit||r.rule_hit||''}</span></p><p class="text-[11px] text-slate-400 truncate">${r.reason||''}</p></div><div class="text-right text-[10px] text-slate-500 mono shrink-0">F&G ${fg}<br>Ctx ${ctx}%</div>`;
+  if(prepend) log.prepend(entry); else log.appendChild(entry);
 }
-function clearLog(){decisions=[];skipCount=0;tradeCount=0;document.getElementById('tradeLog').innerHTML='<p class="text-sm text-slate-500 text-center py-6">Aucune décision.</p>';document.getElementById('skipCount').textContent=0;document.getElementById('tradeCount').textContent=0;}
+
+function restoreJournal(){
+  const saved = loadLocal();
+  if(!saved.length) return;
+  const log=document.getElementById('tradeLog');
+  log.innerHTML='';
+  skipCount=0; tradeCount=0; decisions=[];
+  // restore oldest first so prepend order is correct
+  saved.slice().reverse().forEach(s=>{
+    const r = {
+      action: s.action,
+      direction: s.direction,
+      reason: s.reason,
+      ruleHit: s.rule_hit,
+      fg: s.fg_score,
+      contextStrength: s.context_strength,
+      timestamp: new Date(s.ts),
+      rsi: s.rsi
+    };
+    decisions.unshift(r);
+    if(r.action==='SKIP') skipCount++; else tradeCount++;
+    renderLogEntry(r, true);
+  });
+  // keep only 15 visible logic already in decisions
+  while(decisions.length>15) decisions.pop();
+  document.getElementById('skipCount').textContent=skipCount;
+  document.getElementById('tradeCount').textContent=tradeCount;
+}
+
+function logDecision(r){
+  if(decisions.length===0){
+    const log=document.getElementById('tradeLog');
+    log.innerHTML='';
+  }
+  decisions.unshift(r); if(decisions.length>15) decisions.pop();
+  renderLogEntry(r, true);
+  saveLocal();
+  postToApi(r);
+}
+
+function clearLog(){
+  decisions=[]; skipCount=0; tradeCount=0;
+  document.getElementById('tradeLog').innerHTML='<p class="text-sm text-slate-500 text-center py-6">Aucune décision.</p>';
+  document.getElementById('skipCount').textContent=0;
+  document.getElementById('tradeCount').textContent=0;
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+}
 
 // ===== INIT =====
 async function init(){
   generatePriceHistory();
-  // small delay so container has size
   setTimeout(()=>{ initTvChart(); }, 80);
   document.getElementById('livePrice').textContent=currentPrice.toLocaleString('en-US',{minimumFractionDigits:2});
+  restoreJournal();
   await fetchFearGreed();
   setInterval(tickPrice,3200);
   setInterval(fetchFearGreed,5*60*1000);
