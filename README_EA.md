@@ -1,38 +1,33 @@
-# BotGold AI — Expert Advisor MT5 (v2.10)
+# BotGold AI — Expert Advisor MT5 (v2.20)
 
-EA anti-martingale contextuel pour **XAUUSD**.
+EA anti-martingale contextuel **XAUUSD** + lien dashboard (B).
 
-## Nouveauté v2.10
+## v2.20 — Lien Dashboard ↔ EA
 
-Export CSV automatique des décisions SKIP / TRADE :
-- Fichier : `Common/Files/BotGold_tester.csv`
-- Colonnes : datetime, action, direction, symbol, score, price, lot, sl, tp, reason
-- Paramètre : `InpWriteCsv = true` (défaut)
+1. **Fichier signal** `Common/Files/BotGold_signal.txt`
+   - `RUN` | `PAUSE` | `FORCE_SKIP`
+2. **POST API** optionnel vers `/decisions` (WebRequest live)
+3. CSV `BotGold_tester.csv` (v2.10+)
 
-Ouvrir le dossier : MT5 → Fichier → Ouvrir le dossier de données → `Common/Files/`
+Voir `GUIDE_LIEN_DASHBOARD_EA.md`.
 
 ## Installation
 
-1. Copier `BotGold_AI.mq5` dans `MQL5/Experts/`
-2. MetaEditor → Compile (F7)
-3. Attacher sur **XAUUSD M5** en **démo**
-4. AutoTrading ON
+1. `BotGold_AI.mq5` → `MQL5/Experts/` → Compile (F7)
+2. Graphique XAUUSD M5 démo → attacher l’EA
+3. AutoTrading ON
+4. (API) Options → Expert Advisors → autoriser l’URL de l’API
 
-## Paramètres clés
+## Paramètres B
 
 | Paramètre | Défaut | Rôle |
 |-----------|--------|------|
-| InpRiskPercent | 1.0 | Risque % |
-| InpMinContextScore | 58 | Seuil R04 |
-| InpMaxTradesPerDay | 3 | Limite journalière |
-| InpSkipExtremeFear | true | Filtre fear |
+| InpUseSignalFile | true | Lire signal fichier |
+| InpSignalFile | BotGold_signal.txt | Nom du fichier |
+| InpPostToApi | false | Envoyer vers API |
+| InpApiUrl | (vide) | Base URL API |
 | InpWriteCsv | true | Log CSV |
-| InpVerboseLog | true | Onglet Experts |
 
-## Les 5 règles
+## Règles R01–R05
 
-R01 Aucun martingale · R02 Aucun grid · R03 Stop jamais élargi · R04 Droit de ne rien faire · R05 Exécution locale
-
-## Disclaimer
-
-Prototype éducatif. Testez en démo. Trading = risque de perte.
+Inchangées. Le signal web ne peut **pas** forcer un BUY/SELL — seulement pause / skip / run.

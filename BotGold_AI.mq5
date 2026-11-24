@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                                  BotGold_AI.mq5  |
-//|                     BotGold AI v2.10 — Anti-Martingale Contextuel|
+//|                     BotGold AI v2.20 — Anti-Martingale Contextuel|
 //|                     XAUUSD | MT5 | Règles R01-R05                 |
 //+------------------------------------------------------------------+
 #property copyright "BotGold AI"
 #property link      "https://github.com/wiigi0266-boop/botgold-ai-saas"
-#property version   "2.10"
+#property version   "2.20"
 #property description "EA anti-martingale contextuel XAUUSD v2"
 #property description "R01 Aucun Martingale | R02 Aucun Grid"
 #property description "R03 Stop jamais élargi | R04 Droit de ne rien faire"
@@ -52,6 +52,13 @@ input bool     InpOnlyXAUUSD      = true;     // Restreindre à XAUUSD / GOLD
 input bool     InpVerboseLog      = true;     // Logs détaillés Experts
 input bool     InpWriteCsv        = true;     // Export CSV backtest/live (Common/Files)
 
+input group "=== Lien Dashboard / API (B) ==="
+input bool     InpUseSignalFile   = true;     // Lire Common/Files/BotGold_signal.txt
+input string   InpSignalFile      = "BotGold_signal.txt"; // PAUSE | FORCE_SKIP | RUN
+input bool     InpPostToApi       = false;    // Envoyer décisions vers API
+input string   InpApiUrl          = "";       // ex: https://xxx.up.railway.app
+input int      InpApiTimeoutMs    = 3000;     // Timeout WebRequest (ms)
+
 //--- Globals
 CTrade         trade;
 CPositionInfo  posInfo;
@@ -67,6 +74,7 @@ datetime lastDay     = 0;
 string   lastSkipReason = "";
 string   csvFileName = "BotGold_tester.csv";
 bool     csvHeaderDone = false;
+string   signalState = "RUN"; // RUN | PAUSE | FORCE_SKIP
 
 //+------------------------------------------------------------------+
 int OnInit()
@@ -110,13 +118,17 @@ int OnInit()
    }
 
    Print("════════════════════════════════════════");
-   Print("BotGold AI v2.10 initialisé");
+   Print("BotGold AI v2.20 initialisé");
    Print("R01 Aucun Martingale | R02 Aucun Grid");
    Print("R03 Stop jamais élargi | R04 Droit de ne rien faire");
    Print("R05 Exécution locale | Risque ", InpRiskPercent, "%");
    Print("Score min: ", InpMinContextScore, " | Max trades/j: ", InpMaxTradesPerDay);
    if(InpWriteCsv)
       Print("CSV log: Common/Files/", csvFileName);
+   if(InpUseSignalFile)
+      Print("Signal file: Common/Files/", InpSignalFile, " (PAUSE|FORCE_SKIP|RUN)");
+   if(InpPostToApi && StringLen(InpApiUrl) > 0)
+      Print("API POST: ", InpApiUrl, "/decisions");
    Print("════════════════════════════════════════");
    return INIT_SUCCEEDED;
 }
@@ -151,10 +163,26 @@ void OnTick()
    // R03 : trailing / BE seulement (jamais élargir le stop)
    ManageOpenPosition();
 
+   // Signal dashboard / fichier externe (B)
+   if(InpUseSignalFile)
+      ReadSignalFile();
+
+   if(signalState == "PAUSE")
+   {
+      Comment("BotGold AI | PAUSE (signal fichier) — aucune nouvelle entrée");
+      return;
+   }
+
    // Nouvelle bougie M5 uniquement
    datetime barTime = iTime(_Symbol, InpTF_Fast, 0);
    if(barTime == lastBarTime) return;
    lastBarTime = barTime;
+
+   if(signalState == "FORCE_SKIP")
+   {
+      LogSkip("FORCE_SKIP (signal dashboard/fichier)");
+      return;
+   }
 
    // R02 : une seule position
    if(CountOurPositions() > 0)
@@ -427,6 +455,7 @@ bool OpenTrade(int direction, int score, string reason)
       Comment("BotGold AI | TRADE ", dir,
               " score=", score, " lot=", DoubleToString(lots, 2));
       WriteCsvDecision("TRADE", dir, score, reason, lots, sl, tp);
+      PostDecisionToApi("TRADE", dir, score, reason, lots);
    }
    else
    {
@@ -569,5 +598,82 @@ void LogSkip(string msg)
    if(InpVerboseLog)
       Print("BotGold AI | SKIP — ", msg);
    WriteCsvDecision("SKIP", "", 0, msg, 0, 0, 0);
+   PostDecisionToApi("SKIP", "", 0, msg, 0);
+}
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| B — Lire signal dashboard / bridge (Common/Files)                |
+//| Contenu fichier: une ligne = PAUSE | FORCE_SKIP | RUN            |
+//+------------------------------------------------------------------+
+void ReadSignalFile()
+{
+   if(!InpUseSignalFile) return;
+   int h = FileOpen(InpSignalFile, FILE_READ|FILE_TXT|FILE_ANSI|FILE_COMMON);
+   if(h == INVALID_HANDLE) return; // pas de fichier = RUN
+   string line = FileReadString(h);
+   FileClose(h);
+   StringTrimLeft(line);
+   StringTrimRight(line);
+   StringToUpper(line);
+   if(line == "PAUSE" || line == "FORCE_SKIP" || line == "RUN")
+   {
+      if(line != signalState && InpVerboseLog)
+         Print("BotGold AI | Signal → ", line);
+      signalState = line;
+   }
+}
+
+//+------------------------------------------------------------------+
+//| B — POST décision vers API backend (WebRequest)                  |
+//| MT5: Outils → Options → Expert Advisors → Autoriser URL          |
+//+------------------------------------------------------------------+
+void PostDecisionToApi(string action, string direction, int score, string reason, double lot)
+{
+   if(!InpPostToApi) return;
+   if(StringLen(InpApiUrl) < 8) return;
+   // WebRequest indisponible dans Strategy Tester
+   if(MQLInfoInteger(MQL_TESTER) || MQLInfoInteger(MQL_OPTIMIZATION)) return;
+
+   string url = InpApiUrl;
+   if(StringGetCharacter(url, StringLen(url)-1) == '/')
+      url = StringSubstr(url, 0, StringLen(url)-1);
+   url += "/decisions";
+
+   // JSON minimal
+   string json = "{";
+   json += "\"action\":\"" + action + "\",";
+   if(StringLen(direction) > 0)
+      json += "\"direction\":\"" + direction + "\",";
+   json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"score\":" + IntegerToString(score) + ",";
+   json += "\"lot_size\":" + DoubleToString(lot, 2) + ",";
+   // escape quotes in reason
+   string r = reason;
+   StringReplace(r, "\\", "\\\\");
+   StringReplace(r, "\"", "'");
+   json += "\"reason\":\"" + r + "\",";
+   json += "\"source\":\"ea\"";
+   json += "}";
+
+   char post[], result[];
+   string headers = "Content-Type: application/json\r\n";
+   StringToCharArray(json, post, 0, WHOLE_ARRAY, CP_UTF8);
+   // retirer null final éventuel
+   int n = ArraySize(post);
+   if(n > 0 && post[n-1] == 0) ArrayResize(post, n-1);
+
+   string result_headers;
+   ResetLastError();
+   int code = WebRequest("POST", url, headers, InpApiTimeoutMs, post, result, result_headers);
+   if(code == -1)
+   {
+      int err = GetLastError();
+      if(InpVerboseLog)
+         Print("BotGold AI | API WebRequest failed err=", err,
+               " — autoriser l'URL dans Options > Expert Advisors: ", InpApiUrl);
+   }
+   else if(InpVerboseLog && code != 200 && code != 201)
+      Print("BotGold AI | API HTTP ", code, " ", CharArrayToString(result));
 }
 //+------------------------------------------------------------------+
