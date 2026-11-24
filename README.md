@@ -1,46 +1,34 @@
-# BotGold AI — Backend API
+# BotGold AI — SaaS Dashboard + EA MT5
 
-API minimale pour historiser les décisions **SKIP / TRADE**.
+Anti-martingale contextuel XAUUSD · Règles R01–R05 · Sentiment Fear & Greed
 
-## Lancer en local (PC)
+## Contenu
 
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
+| Fichier | Description |
+|---------|-------------|
+| `index.html` | Dashboard premium (mobile, localStorage, API optionnelle) |
+| `BotGold_AI.mq5` | EA MT5 **v2.20** (CSV + signal fichier + POST API) |
+| `README_EA.md` | Installation EA |
+| `BotGold_signal.example.txt` | Exemple signal `RUN` / `PAUSE` / `FORCE_SKIP` |
+| `main.py` | Backend FastAPI (historique décisions) |
+| `requirements.txt` | Dépendances Python |
+| `GUIDE_*.md` | Backtest, logs, déploiement API, lien dashboard↔EA |
 
-- Docs interactives : http://127.0.0.1:8000/docs  
-- Health : http://127.0.0.1:8000/health  
+## Liens utiles
 
-## Endpoints
+- Dashboard (raw) : https://raw.githack.com/wiigi0266-boop/botgold-ai-saas/main/index.html
+- Repo : https://github.com/wiigi0266-boop/botgold-ai-saas
 
-| Méthode | Chemin | Description |
-|---------|--------|-------------|
-| GET | `/health` | Statut |
-| POST | `/decisions` | Enregistrer une décision |
-| GET | `/decisions` | Liste (filtres `action`, `source`) |
-| GET | `/stats` | Totaux SKIP / TRADE |
-| DELETE | `/decisions` | Effacer (dev) |
+## Démarrage rapide
 
-## Exemple POST
+**Dashboard** — ouvrir `index.html`  
+**EA** — compiler dans MetaEditor, attacher sur XAUUSD M5 démo  
+**API** — `uvicorn main:app --host 0.0.0.0 --port $PORT`
 
-```json
-{
-  "action": "SKIP",
-  "symbol": "XAUUSD",
-  "fg_score": 11,
-  "score": 38,
-  "reason": "Extreme Fear — filtre anti-foule R04",
-  "rule_hit": "R04",
-  "source": "dashboard"
-}
-```
+## Les 5 règles
 
-## Déploiement
+R01 Aucun martingale · R02 Aucun grid · R03 Stop jamais élargi · R04 Droit de ne rien faire · R05 Exécution locale
 
-Compatible Railway, Render, Fly.io, Vercel (serverless adapter), ou VPS.
+## Disclaimer
 
-Variable optionnelle : `BOTGOLD_DB` (chemin fichier SQLite).
+Prototype éducatif. Aucun ordre réel depuis le dashboard. Trading = risque de perte.
