@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                                  BotGold_AI.mq5  |
-//|                     BotGold AI v2.00 — Anti-Martingale Contextuel|
+//|                     BotGold AI v2.10 — Anti-Martingale Contextuel|
 //|                     XAUUSD | MT5 | Règles R01-R05                 |
 //+------------------------------------------------------------------+
 #property copyright "BotGold AI"
 #property link      "https://github.com/wiigi0266-boop/botgold-ai-saas"
-#property version   "2.00"
+#property version   "2.10"
 #property description "EA anti-martingale contextuel XAUUSD v2"
 #property description "R01 Aucun Martingale | R02 Aucun Grid"
 #property description "R03 Stop jamais élargi | R04 Droit de ne rien faire"
@@ -50,6 +50,7 @@ input int      InpSessionEndHour  = 21;       // Fin session
 input group "=== Divers ==="
 input bool     InpOnlyXAUUSD      = true;     // Restreindre à XAUUSD / GOLD
 input bool     InpVerboseLog      = true;     // Logs détaillés Experts
+input bool     InpWriteCsv        = true;     // Export CSV backtest/live (Common/Files)
 
 //--- Globals
 CTrade         trade;
@@ -64,6 +65,8 @@ datetime lastBarTime = 0;
 int      tradesToday = 0;
 datetime lastDay     = 0;
 string   lastSkipReason = "";
+string   csvFileName = "BotGold_tester.csv";
+bool     csvHeaderDone = false;
 
 //+------------------------------------------------------------------+
 int OnInit()
@@ -107,11 +110,13 @@ int OnInit()
    }
 
    Print("════════════════════════════════════════");
-   Print("BotGold AI v2.00 initialisé");
+   Print("BotGold AI v2.10 initialisé");
    Print("R01 Aucun Martingale | R02 Aucun Grid");
    Print("R03 Stop jamais élargi | R04 Droit de ne rien faire");
    Print("R05 Exécution locale | Risque ", InpRiskPercent, "%");
    Print("Score min: ", InpMinContextScore, " | Max trades/j: ", InpMaxTradesPerDay);
+   if(InpWriteCsv)
+      Print("CSV log: Common/Files/", csvFileName);
    Print("════════════════════════════════════════");
    return INIT_SUCCEEDED;
 }
@@ -412,14 +417,16 @@ bool OpenTrade(int direction, int score, string reason)
 
    if(ok)
    {
-      Print("BotGold AI | TRADE ", (direction == 1 ? "BUY" : "SELL"),
+      string dir = (direction == 1 ? "BUY" : "SELL");
+      Print("BotGold AI | TRADE ", dir,
             " | Lot=", DoubleToString(lots, 2),
             " | SL=", DoubleToString(sl, _Digits),
             " | TP=", DoubleToString(tp, _Digits),
             " | Score=", score,
             " | ", reason);
-      Comment("BotGold AI | TRADE ", (direction == 1 ? "BUY" : "SELL"),
+      Comment("BotGold AI | TRADE ", dir,
               " score=", score, " lot=", DoubleToString(lots, 2));
+      WriteCsvDecision("TRADE", dir, score, reason, lots, sl, tp);
    }
    else
    {
@@ -505,6 +512,51 @@ int CountOurPositions()
 }
 
 //+------------------------------------------------------------------+
+void WriteCsvDecision(string action, string direction, int score, string reason, double lot, double sl, double tp)
+{
+   if(!InpWriteCsv) return;
+   int h = FileOpen(csvFileName, FILE_READ|FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON, ';');
+   if(h == INVALID_HANDLE)
+   {
+      // créer
+      h = FileOpen(csvFileName, FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON, ';');
+      if(h == INVALID_HANDLE)
+      {
+         if(InpVerboseLog) Print("BotGold AI | CSV open failed: ", GetLastError());
+         return;
+      }
+      FileWrite(h, "datetime", "action", "direction", "symbol", "score", "price", "lot", "sl", "tp", "reason");
+      csvHeaderDone = true;
+   }
+   else
+   {
+      // aller en fin de fichier
+      FileSeek(h, 0, SEEK_END);
+      if(!csvHeaderDone && FileTell(h) == 0)
+      {
+         FileWrite(h, "datetime", "action", "direction", "symbol", "score", "price", "lot", "sl", "tp", "reason");
+         csvHeaderDone = true;
+      }
+      else csvHeaderDone = true;
+   }
+   double px = 0;
+   if(symInfo.RefreshRates()) px = (direction == "SELL" ? symInfo.Bid() : symInfo.Ask());
+   if(px == 0) px = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   FileWrite(h,
+      TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS),
+      action,
+      direction,
+      _Symbol,
+      IntegerToString(score),
+      DoubleToString(px, _Digits),
+      DoubleToString(lot, 2),
+      DoubleToString(sl, _Digits),
+      DoubleToString(tp, _Digits),
+      reason
+   );
+   FileClose(h);
+}
+
 void LogSkip(string msg)
 {
    if(msg == lastSkipReason) // éviter spam Comment
@@ -516,5 +568,6 @@ void LogSkip(string msg)
    Comment("BotGold AI | SKIP — ", msg);
    if(InpVerboseLog)
       Print("BotGold AI | SKIP — ", msg);
+   WriteCsvDecision("SKIP", "", 0, msg, 0, 0, 0);
 }
 //+------------------------------------------------------------------+
