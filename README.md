@@ -1,60 +1,46 @@
-# BotGold AI — Premium SaaS Trading Dashboard
+# BotGold AI — Backend API
 
-Plateforme SaaS anti-martingale contextuelle (XAUUSD / MT5).
+API minimale pour historiser les décisions **SKIP / TRADE**.
 
-## Contenu
-
-```
-botgold-ai-saas/
-├── index.html              # Dashboard premium (mobile-first)
-├── BotGold_AI.mq5          # Expert Advisor MT5 v2
-├── README_EA.md
-├── backend/                # API FastAPI (historique décisions)
-│   ├── main.py
-│   ├── requirements.txt
-│   └── README.md
-├── CAHIER_DES_CHARGES.md
-└── README.md
-```
-
-## Dashboard
-
-Ouvre `index.html` ou :
-**https://raw.githack.com/wiigi0266-boop/botgold-ai-saas/main/index.html**
-
-- Fear & Greed réel (API alternative.me)
-- Journal persistant (localStorage)
-- Envoi optionnel vers l’API backend
-
-### Brancher l’API (optionnel)
-
-Dans la console navigateur :
-```js
-localStorage.setItem('botgold_api_url', 'https://ton-api.railway.app')
-```
-
-## EA MQL5
-
-Voir `README_EA.md` — compiler dans MetaEditor, attacher sur XAUUSD M5 démo.
-
-## Backend
+## Lancer en local (PC)
 
 ```bash
 cd backend
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-## Les 5 règles
+- Docs interactives : http://127.0.0.1:8000/docs  
+- Health : http://127.0.0.1:8000/health  
 
-| Code | Règle |
-|------|--------|
-| R01 | Aucun Martingale |
-| R02 | Aucun Grid |
-| R03 | Stop jamais élargi |
-| R04 | Droit de ne rien faire |
-| R05 | Exécution locale MT5 |
+## Endpoints
 
-## Disclaimer
+| Méthode | Chemin | Description |
+|---------|--------|-------------|
+| GET | `/health` | Statut |
+| POST | `/decisions` | Enregistrer une décision |
+| GET | `/decisions` | Liste (filtres `action`, `source`) |
+| GET | `/stats` | Totaux SKIP / TRADE |
+| DELETE | `/decisions` | Effacer (dev) |
 
-Prototype éducatif. Aucun ordre réel depuis le dashboard. Trading = risque de perte.
+## Exemple POST
+
+```json
+{
+  "action": "SKIP",
+  "symbol": "XAUUSD",
+  "fg_score": 11,
+  "score": 38,
+  "reason": "Extreme Fear — filtre anti-foule R04",
+  "rule_hit": "R04",
+  "source": "dashboard"
+}
+```
+
+## Déploiement
+
+Compatible Railway, Render, Fly.io, Vercel (serverless adapter), ou VPS.
+
+Variable optionnelle : `BOTGOLD_DB` (chemin fichier SQLite).
