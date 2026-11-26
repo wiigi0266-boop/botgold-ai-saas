@@ -342,6 +342,25 @@ body{font-family:'Inter',system-ui,sans-serif;background:#01040a;color:#e2e8f0;o
             <input type="number" id="capitalInput" value="10000" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white mono focus:outline-none focus:border-gold-500" onchange="updateCapital(this.value)">
           </div>
         </div>
+        <!-- API Backend -->
+        <div class="mt-5 pt-4 border-t border-slate-800/80">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs text-slate-400 flex items-center gap-1.5">
+              <i class="fas fa-cloud text-gold-500 text-[10px]"></i> URL API Backend (Railway)
+            </label>
+            <span id="apiConnStatus" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">Non connecté</span>
+          </div>
+          <div class="flex gap-2">
+            <input type="url" id="apiUrlInput" placeholder="https://botgold-ai-saas-production.up.railway.app"
+              class="flex-1 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white mono focus:outline-none focus:border-gold-500"
+              onchange="saveApiUrl(this.value)" onkeydown="if(event.key==='Enter'){saveApiUrl(this.value)}">
+            <button onclick="saveApiUrl(document.getElementById('apiUrlInput').value); testApiConn()"
+              class="px-3 py-2 rounded-xl bg-gold-500/20 text-gold-400 text-xs font-medium hover:bg-gold-500/30 active:scale-95 shrink-0">
+              Sauver
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1.5">Les décisions (SKIP/TRADE) sont envoyées à cette API. Laisse vide = local uniquement.</p>
+        </div>
       </div>
 
       <p class="text-[10px] sm:text-[11px] text-slate-600 text-center max-w-2xl mx-auto leading-relaxed pb-2">
@@ -762,7 +781,43 @@ function displayDecision(r){
 
 // ===== PERSISTENCE (localStorage + API optionnelle) =====
 const STORAGE_KEY = 'botgold_decisions_v1';
-const API_URL = localStorage.getItem('botgold_api_url') || ''; // ex: https://xxx.railway.app
+let API_URL = localStorage.getItem('botgold_api_url') || ''; // ex: https://xxx.railway.app
+
+function saveApiUrl(url){
+  url = (url || '').trim().replace(/\/$/, '');
+  API_URL = url;
+  try{ localStorage.setItem('botgold_api_url', url); }catch(e){}
+  const inp = document.getElementById('apiUrlInput');
+  if(inp && inp.value !== url) inp.value = url;
+  updateApiConnStatus();
+  if(url) testApiConn();
+}
+
+function updateApiConnStatus(ok){
+  const el = document.getElementById('apiConnStatus');
+  if(!el) return;
+  if(!API_URL){
+    el.textContent = 'Non connecté';
+    el.className = 'text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-400';
+  } else if(ok === true){
+    el.textContent = 'API OK';
+    el.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400';
+  } else if(ok === false){
+    el.textContent = 'Erreur';
+    el.className = 'text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400';
+  } else {
+    el.textContent = 'Configuré';
+    el.className = 'text-[10px] px-2 py-0.5 rounded-full bg-gold-500/20 text-gold-400';
+  }
+}
+
+async function testApiConn(){
+  if(!API_URL){ updateApiConnStatus(); return; }
+  try{
+    const res = await fetch(API_URL.replace(/\/$/,'') + '/health', {cache:'no-store'});
+    updateApiConnStatus(res.ok);
+  }catch(e){ updateApiConnStatus(false); }
+}
 
 function serializeDecision(r){
   return {
@@ -879,6 +934,15 @@ async function init(){
   setTimeout(()=>{ initTvChart(); }, 80);
   document.getElementById('livePrice').textContent=currentPrice.toLocaleString('en-US',{minimumFractionDigits:2});
   restoreJournal();
+// Init API URL field
+(function(){
+  const inp = document.getElementById('apiUrlInput');
+  if(inp){
+    inp.value = API_URL || '';
+    updateApiConnStatus();
+    if(API_URL) testApiConn();
+  }
+})();
   await fetchFearGreed();
   setInterval(tickPrice,3200);
   setInterval(fetchFearGreed,5*60*1000);
