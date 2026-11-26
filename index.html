@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>BotGold AI — Premium Dashboard</title>
+<title>BotGold AI — Premium Dashboard v1.1</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
@@ -160,10 +160,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:#01040a;color:#e2e8f0;o
         <div class="card p-4 sm:p-5">
           <div class="flex items-center justify-between mb-2">
             <span class="text-[10px] sm:text-xs font-medium text-slate-400 uppercase tracking-wider">Skip / Trade</span>
-            <i class="fas fa-brain text-purple-400 text-sm"></i>
+            <span id="statsLiveBadge" class="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-700 text-slate-400">Local</span>
           </div>
           <p class="text-lg sm:text-2xl font-bold text-white mono"><span id="skipCount">0</span>/<span id="tradeCount">0</span></p>
-          <p class="text-[10px] text-slate-500 mt-0.5">Décisions</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">Décisions <span id="lastDecisionHint" class="text-slate-600"></span></p>
         </div>
       </div>
 
@@ -312,11 +312,17 @@ body{font-family:'Inter',system-ui,sans-serif;background:#01040a;color:#e2e8f0;o
           </div>
         </div>
         <div id="history" class="lg:col-span-2 card p-5 section-enter">
-          <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <h3 class="text-sm font-semibold text-white flex items-center gap-2">
               <i class="fas fa-list text-gold-500"></i> Journal
             </h3>
-            <button onclick="clearLog()" class="text-[11px] text-slate-400 hover:text-white">Effacer</button>
+            <div class="flex items-center gap-2">
+              <button onclick="loadHistoryFromApi()" id="btnLoadHistory"
+                class="text-[11px] px-2.5 py-1 rounded-lg bg-gold-500/15 text-gold-400 hover:bg-gold-500/25 active:scale-95">
+                <i class="fas fa-cloud-download-alt mr-1"></i>Historique API
+              </button>
+              <button onclick="clearLog()" class="text-[11px] text-slate-400 hover:text-white">Effacer</button>
+            </div>
           </div>
           <div id="tradeLog" class="space-y-2 max-h-64 sm:max-h-80 overflow-y-auto">
             <p class="text-sm text-slate-500 text-center py-6">Aucune décision.</p>
@@ -359,7 +365,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:#01040a;color:#e2e8f0;o
               Sauver
             </button>
           </div>
-          <p class="text-[10px] text-slate-500 mt-1.5">Les décisions (SKIP/TRADE) sont envoyées à cette API. Laisse vide = local uniquement.</p>
+          <p class="text-[10px] text-slate-500 mt-1.5">Les décisions (SKIP/TRADE) sont envoyées à cette API. Laisse vide = local uniquement. Stats live toutes les 15 s.</p>
+          <div id="apiStatsMini" class="hidden mt-2 text-[10px] text-slate-400 mono flex flex-wrap gap-x-3 gap-y-1">
+            <span>API total: <b id="apiTotal" class="text-white">0</b></span>
+            <span>Skip: <b id="apiSkips" class="text-amber-400">0</b></span>
+            <span>Trade: <b id="apiTrades" class="text-emerald-400">0</b></span>
+            <span id="apiLastAt" class="text-slate-500"></span>
+          </div>
         </div>
       </div>
 
@@ -928,13 +940,141 @@ function clearLog(){
   try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
 }
 
+
+// ===== LIVE STATS + HISTORIQUE API (A + C) =====
+let statsPollTimer = null;
+
+function formatShortTs(iso){
+  if(!iso) return '';
+  try{
+    const d = new Date(iso);
+    return d.toLocaleString('fr-FR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+  }catch(e){ return ''; }
+}
+
+async function fetchLiveStats(){
+  if(!API_URL) return null;
+  try{
+    const res = await fetch(API_URL.replace(/\/$/,'') + '/stats', {cache:'no-store'});
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(e){ return null; }
+}
+
+async function syncLiveStats(){
+  const badge = document.getElementById('statsLiveBadge');
+  const mini = document.getElementById('apiStatsMini');
+  const hint = document.getElementById('lastDecisionHint');
+  if(!API_URL){
+    if(badge){ badge.textContent='Local'; badge.className='text-[9px] px-1.5 py-0.5 rounded-full bg-slate-700 text-slate-400'; }
+    if(mini) mini.classList.add('hidden');
+    if(hint) hint.textContent='';
+    return;
+  }
+  const s = await fetchLiveStats();
+  if(!s){
+    if(badge){ badge.textContent='API ?'; badge.className='text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400'; }
+    return;
+  }
+  // Prefer API totals when connected
+  if(typeof s.skips === 'number') document.getElementById('skipCount').textContent = s.skips;
+  if(typeof s.trades === 'number') document.getElementById('tradeCount').textContent = s.trades;
+  // also keep local vars roughly in sync
+  if(typeof s.skips === 'number') skipCount = s.skips;
+  if(typeof s.trades === 'number') tradeCount = s.trades;
+
+  if(badge){
+    badge.textContent = 'API Live';
+    badge.className = 'text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400';
+  }
+  if(mini){
+    mini.classList.remove('hidden');
+    const t = document.getElementById('apiTotal');
+    const sk = document.getElementById('apiSkips');
+    const tr = document.getElementById('apiTrades');
+    const la = document.getElementById('apiLastAt');
+    if(t) t.textContent = s.total ?? 0;
+    if(sk) sk.textContent = s.skips ?? 0;
+    if(tr) tr.textContent = s.trades ?? 0;
+    if(la) la.textContent = s.last_decision_at ? ('· ' + formatShortTs(s.last_decision_at)) : '';
+  }
+  if(hint){
+    hint.textContent = s.last_decision_at ? ('· ' + formatShortTs(s.last_decision_at)) : '';
+  }
+}
+
+function startStatsPolling(){
+  if(statsPollTimer) clearInterval(statsPollTimer);
+  if(!API_URL) return;
+  syncLiveStats();
+  statsPollTimer = setInterval(syncLiveStats, 15000);
+}
+
+// Override saveApiUrl to restart polling
+const _saveApiUrlOrig = saveApiUrl;
+saveApiUrl = function(url){
+  _saveApiUrlOrig(url);
+  startStatsPolling();
+};
+
+async function loadHistoryFromApi(){
+  if(!API_URL){
+    alert('Configure d’abord l’URL API Backend (Railway).');
+    return;
+  }
+  const btn = document.getElementById('btnLoadHistory');
+  if(btn){ btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Chargement…'; }
+  try{
+    const res = await fetch(API_URL.replace(/\/$/,'') + '/decisions?limit=50', {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const rows = await res.json();
+    const log = document.getElementById('tradeLog');
+    log.innerHTML = '';
+    decisions = [];
+    // rows are newest-first from API
+    rows.forEach(row => {
+      const r = {
+        action: row.action,
+        direction: row.direction,
+        reason: row.reason || '',
+        ruleHit: row.rule_hit,
+        fg: row.fg_score,
+        contextStrength: row.context_strength,
+        timestamp: new Date(row.created_at),
+        rsi: row.rsi,
+        price: row.price,
+        score: row.score,
+        source: row.source || 'api'
+      };
+      decisions.push(r);
+      renderLogEntry(r, false); // append in order received (newest first visually if prepend? we append)
+    });
+    // Re-render newest on top
+    log.innerHTML = '';
+    decisions.forEach(r => renderLogEntry(r, true));
+    await syncLiveStats();
+  }catch(e){
+    console.warn(e);
+    alert('Impossible de charger l’historique API.');
+  }finally{
+    if(btn){ btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-download-alt mr-1"></i>Historique API'; }
+  }
+}
+
+// After successful post, refresh stats quickly
+const _postToApiOrig = postToApi;
+postToApi = async function(r){
+  await _postToApiOrig(r);
+  setTimeout(syncLiveStats, 400);
+};
+
 // ===== INIT =====
 async function init(){
   generatePriceHistory();
   setTimeout(()=>{ initTvChart(); }, 80);
   document.getElementById('livePrice').textContent=currentPrice.toLocaleString('en-US',{minimumFractionDigits:2});
   restoreJournal();
-// Init API URL field
+// Init API URL field + live stats
 (function(){
   const inp = document.getElementById('apiUrlInput');
   if(inp){
@@ -942,6 +1082,7 @@ async function init(){
     updateApiConnStatus();
     if(API_URL) testApiConn();
   }
+  startStatsPolling();
 })();
   await fetchFearGreed();
   setInterval(tickPrice,3200);

@@ -1,12 +1,12 @@
 //+------------------------------------------------------------------+
 //|                                                  BotGold_AI.mq5  |
-//|                     BotGold AI v2.20 — Anti-Martingale Contextuel|
+//|                     BotGold AI v2.30 — Anti-Martingale Contextuel|
 //|                     XAUUSD | MT5 | Règles R01-R05                 |
 //+------------------------------------------------------------------+
 #property copyright "BotGold AI"
 #property link      "https://github.com/wiigi0266-boop/botgold-ai-saas"
-#property version   "2.20"
-#property description "EA anti-martingale contextuel XAUUSD v2"
+#property version   "2.30"
+#property description "EA anti-martingale contextuel XAUUSD v2.30"
 #property description "R01 Aucun Martingale | R02 Aucun Grid"
 #property description "R03 Stop jamais élargi | R04 Droit de ne rien faire"
 #property description "R05 Exécution locale uniquement"
@@ -55,9 +55,10 @@ input bool     InpWriteCsv        = true;     // Export CSV backtest/live (Commo
 input group "=== Lien Dashboard / API (B) ==="
 input bool     InpUseSignalFile   = true;     // Lire Common/Files/BotGold_signal.txt
 input string   InpSignalFile      = "BotGold_signal.txt"; // PAUSE | FORCE_SKIP | RUN
-input bool     InpPostToApi       = false;    // Envoyer décisions vers API
-input string   InpApiUrl          = "";       // ex: https://xxx.up.railway.app
-input int      InpApiTimeoutMs    = 3000;     // Timeout WebRequest (ms)
+input bool     InpPostToApi       = true;     // Envoyer décisions vers API (live)
+input string   InpApiUrl          = "https://botgold-ai-saas-production.up.railway.app"; // URL Railway
+input int      InpApiTimeoutMs    = 4000;     // Timeout WebRequest (ms)
+input double   InpApiRiskPercent  = 1.0;      // Risk % envoyé à l'API
 
 //--- Globals
 CTrade         trade;
@@ -640,26 +641,29 @@ void PostDecisionToApi(string action, string direction, int score, string reason
       url = StringSubstr(url, 0, StringLen(url)-1);
    url += "/decisions";
 
-   // JSON minimal
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+
+   // JSON enrichi v2.30
    string json = "{";
    json += "\"action\":\"" + action + "\",";
    if(StringLen(direction) > 0)
       json += "\"direction\":\"" + direction + "\",";
    json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"price\":" + DoubleToString(bid, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS)) + ",";
    json += "\"score\":" + IntegerToString(score) + ",";
    json += "\"lot_size\":" + DoubleToString(lot, 2) + ",";
-   // escape quotes in reason
+   json += "\"risk_percent\":" + DoubleToString(InpApiRiskPercent, 2) + ",";
    string r = reason;
-   StringReplace(r, "\\", "\\\\");
+   StringReplace(r, "\", "\\");
    StringReplace(r, "\"", "'");
    json += "\"reason\":\"" + r + "\",";
    json += "\"source\":\"ea\"";
    json += "}";
 
    char post[], result[];
-   string headers = "Content-Type: application/json\r\n";
+   string headers = "Content-Type: application/json
+";
    StringToCharArray(json, post, 0, WHOLE_ARRAY, CP_UTF8);
-   // retirer null final éventuel
    int n = ArraySize(post);
    if(n > 0 && post[n-1] == 0) ArrayResize(post, n-1);
 
@@ -673,7 +677,12 @@ void PostDecisionToApi(string action, string direction, int score, string reason
          Print("BotGold AI | API WebRequest failed err=", err,
                " — autoriser l'URL dans Options > Expert Advisors: ", InpApiUrl);
    }
-   else if(InpVerboseLog && code != 200 && code != 201)
+   else if(code == 200 || code == 201)
+   {
+      if(InpVerboseLog)
+         Print("BotGold AI | API OK ", action, " score=", score);
+   }
+   else if(InpVerboseLog)
       Print("BotGold AI | API HTTP ", code, " ", CharArrayToString(result));
 }
 //+------------------------------------------------------------------+
