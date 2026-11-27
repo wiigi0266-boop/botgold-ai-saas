@@ -899,7 +899,7 @@ function renderLogEntry(r, prepend=true){
   const label = action==='SKIP' ? 'SKIP' : (direction || 'TRADE');
   const fg = r.fg != null ? r.fg : (r.fg_score != null ? r.fg_score : '—');
   const ctx = r.contextStrength != null ? r.contextStrength : (r.context_strength != null ? r.context_strength : '—');
-  entry.innerHTML=`<div class="min-w-0"><p class="text-xs font-medium text-white">${label} <span class="text-slate-500 font-normal">• ${time}</span> <span class="text-[10px] text-slate-600">${r.ruleHit||r.rule_hit||''}</span></p><p class="text-[11px] text-slate-400 truncate">${r.reason||''}</p></div><div class="text-right text-[10px] text-slate-500 mono shrink-0">F&G ${fg}<br>Ctx ${ctx}%</div>`;
+  entry.innerHTML=`<div class="min-w-0"><p class="text-xs font-medium text-white">${label}${srcBadge} <span class="text-slate-500 font-normal">• ${time}</span> <span class="text-[10px] text-slate-600">${r.ruleHit||r.rule_hit||''}</span></p><p class="text-[11px] text-slate-400 truncate">${r.reason||''}</p></div><div class="text-right text-[10px] text-slate-500 mono shrink-0">F&G ${fg}<br>Ctx ${ctx}%</div>`;
   if(prepend) log.prepend(entry); else log.appendChild(entry);
 }
 
@@ -1185,8 +1185,8 @@ window.addEventListener('resize',()=>{
 });
 </script>
 
-<div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 hidden">
-  <div class="bg-slate-800 border border-gold-500/40 text-white text-sm px-4 py-2 rounded-xl shadow-lg flex items-center gap-2">
+<div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-[9999] hidden pointer-events-none">
+  <div class="bg-slate-900 border border-gold-500 text-white text-sm px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2">
     <i class="fas fa-bell text-gold-400"></i>
     <span id="toastMsg">Nouvelle décision</span>
   </div>
