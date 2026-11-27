@@ -325,6 +325,26 @@ body{font-family:'Inter',system-ui,sans-serif;background:#01040a;color:#e2e8f0;o
           </div>
         </div>
 
+        
+        <!-- Alertes de prix -->
+        <div class="card p-5 section-enter">
+          <h3 class="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+            <i class="fas fa-bell text-gold-500"></i> Alertes de prix
+          </h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] text-slate-400">Prix ≥</label>
+              <input type="number" id="alertAbove" step="0.1" placeholder="ex: 3680" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-400">Prix ≤</label>
+              <input type="number" id="alertBelow" step="0.1" placeholder="ex: 3650" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+            </div>
+          </div>
+          <button onclick="savePriceAlerts()" class="mt-3 w-full py-2 rounded-xl bg-gold-500/20 text-gold-400 text-sm">Activer les alertes</button>
+          <p id="alertStatus" class="text-[10px] text-slate-500 mt-2 text-center">Aucune alerte active</p>
+        </div>
+
         <div id="history" class="lg:col-span-2 card p-5 section-enter">
           <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <h3 class="text-sm font-semibold text-white flex items-center gap-2">
@@ -1224,9 +1244,30 @@ async function fetchMt5Data(){
     }
   }catch(e){}
 }
-setInterval(fetchMt5Data, 10000);
+setInterval(()=>{ fetchMt5Data(); if(typeof checkPriceAlerts==="function"){ const p=parseFloat(document.getElementById("price")?.textContent||0); if(p) checkPriceAlerts(p); } }, 10000);
 fetchMt5Data();
 
+
+
+let alertAbove = 0, alertBelow = 0, lastAlertPrice = 0;
+function savePriceAlerts(){
+  alertAbove = parseFloat(document.getElementById('alertAbove').value) || 0;
+  alertBelow = parseFloat(document.getElementById('alertBelow').value) || 0;
+  document.getElementById('alertStatus').textContent = 
+    (alertAbove||alertBelow) ? 'Alertes actives' : 'Aucune alerte active';
+  showToast('Alertes de prix enregistrées');
+}
+function checkPriceAlerts(price){
+  if(alertAbove > 0 && price >= alertAbove && lastAlertPrice < alertAbove){
+    showToast('Prix ≥ ' + alertAbove);
+    if(window.navigator.vibrate) navigator.vibrate(200);
+  }
+  if(alertBelow > 0 && price <= alertBelow && lastAlertPrice > alertBelow){
+    showToast('Prix ≤ ' + alertBelow);
+    if(window.navigator.vibrate) navigator.vibrate(200);
+  }
+  lastAlertPrice = price;
+}
 
 // ===== INIT =====
 async function init(){
