@@ -1196,10 +1196,37 @@ function updatePositions(positions){
   `).join('');
 }
 
-// Demo position (replace later with real data from API/EA)
-setTimeout(() => {
-  updatePositions([{symbol:'GOLD', type:'SELL', lot:0.01, price:3679.42, profit:2.76, sl:3690.96, tp:3639.95}]);
-}, 800);
+
+async function fetchMt5Data(){
+  if(!API_URL) return;
+  try{
+    const [accRes, posRes] = await Promise.all([
+      fetch(API_URL.replace(/\/$/,'') + '/account', {cache:'no-store'}),
+      fetch(API_URL.replace(/\/$/,'') + '/positions', {cache:'no-store'})
+    ]);
+    if(accRes.ok){
+      const acc = await accRes.json();
+      if(acc && acc.equity){
+        document.getElementById('equity').textContent = '$' + Number(acc.equity).toLocaleString('en-US', {minimumFractionDigits:2});
+      }
+    }
+    if(posRes.ok){
+      const positions = await posRes.json();
+      updatePositions(positions.map(p => ({
+        symbol: p.symbol,
+        type: p.type,
+        lot: p.volume,
+        price: p.price_open,
+        profit: p.profit,
+        sl: p.sl,
+        tp: p.tp
+      })));
+    }
+  }catch(e){}
+}
+setInterval(fetchMt5Data, 10000);
+fetchMt5Data();
+
 
 // ===== INIT =====
 async function init(){
