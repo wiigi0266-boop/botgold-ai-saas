@@ -206,6 +206,50 @@ def stats():
     }
 
 
+
+
+class PositionIn(BaseModel):
+    ticket: int
+    symbol: str = "GOLD"
+    type: str  # BUY | SELL
+    volume: float
+    price_open: float
+    sl: Optional[float] = None
+    tp: Optional[float] = None
+    profit: Optional[float] = None
+    magic: Optional[int] = None
+
+class AccountIn(BaseModel):
+    balance: float
+    equity: float
+    margin: Optional[float] = None
+    free_margin: Optional[float] = None
+    currency: str = "USD"
+
+# In-memory store for latest positions and account (simple)
+latest_positions = []
+latest_account = None
+
+@app.post("/positions")
+def update_positions(positions: List[PositionIn]):
+    global latest_positions
+    latest_positions = [p.model_dump() for p in positions]
+    return {"status": "ok", "count": len(latest_positions)}
+
+@app.get("/positions")
+def get_positions():
+    return latest_positions
+
+@app.post("/account")
+def update_account(acc: AccountIn):
+    global latest_account
+    latest_account = acc.model_dump()
+    return {"status": "ok"}
+
+@app.get("/account")
+def get_account():
+    return latest_account or {}
+
 @app.delete("/decisions")
 def clear_decisions():
     """Efface tout l'historique (dev uniquement)."""
