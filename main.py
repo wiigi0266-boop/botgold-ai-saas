@@ -250,6 +250,43 @@ def update_account(acc: AccountIn):
 def get_account():
     return latest_account or {}
 
+
+from fastapi.responses import StreamingResponse
+import io
+
+@app.get("/export/csv")
+def export_csv():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM decisions ORDER BY id ASC").fetchall()
+    conn.close()
+    output = io.StringIO()
+    output.write("id,action,direction,symbol,price,score,context_strength,fg_score,rsi,reason,rule_hit,lot_size,risk_percent,source,created_at\n")
+    for r in rows:
+        line = ",".join([
+            str(r["id"]),
+            r["action"] or "",
+            r["direction"] or "",
+            r["symbol"] or "",
+            str(r["price"] or ""),
+            str(r["score"] or ""),
+            str(r["context_strength"] or ""),
+            str(r["fg_score"] or ""),
+            str(r["rsi"] or ""),
+            '"' + (r["reason"] or "").replace('"', '""') + '"',
+            r["rule_hit"] or "",
+            str(r["lot_size"] or ""),
+            str(r["risk_percent"] or ""),
+            r["source"] or "",
+            r["created_at"] or ""
+        ])
+        output.write(line + "\n")
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=botgold_decisions.csv"}
+    )
+
 @app.delete("/decisions")
 def clear_decisions():
     """Efface tout l'historique (dev uniquement)."""
