@@ -1,0 +1,23 @@
+name: Weekly BotGold Export
+
+on:
+  schedule:
+    # Tous les lundis à 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:  # permet de lancer manuellement
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download CSV
+        run: |
+          curl -sL "https://botgold-ai-saas-production.up.railway.app/export/csv" -o botgold_decisions.csv
+          ls -la botgold_decisions.csv
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: botgold-decisions-weekly
+          path: botgold_decisions.csv
+          retention-days: 90
