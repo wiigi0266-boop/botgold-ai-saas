@@ -316,6 +316,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:#01040a;color:#e2e8f0;o
             <h3 class="text-sm font-semibold text-white flex items-center gap-2">
               <i class="fas fa-list text-gold-500"></i> Journal
             </h3>
+            <div class="flex gap-1 text-[10px]">
+              <button onclick="filterSource('all')" id="fAll" class="px-2 py-1 rounded bg-gold-500/20 text-gold-400">Tous</button>
+              <button onclick="filterSource('dashboard')" id="fDash" class="px-2 py-1 rounded bg-slate-800 text-slate-400">Dashboard</button>
+              <button onclick="filterSource('ea')" id="fEa" class="px-2 py-1 rounded bg-slate-800 text-slate-400">EA</button>
+            </div>
             <div class="flex items-center gap-2">
               <button onclick="loadHistoryFromApi()" id="btnLoadHistory"
                 class="text-[11px] px-2.5 py-1 rounded-lg bg-gold-500/15 text-gold-400 hover:bg-gold-500/25 active:scale-95">
@@ -876,6 +881,11 @@ async function postToApi(r){
 }
 
 function renderLogEntry(r, prepend=true){
+  const src = (r.source || 'dashboard').toLowerCase();
+  const srcBadge = src === 'ea' 
+    ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 ml-1">EA</span>'
+    : '<span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-400 ml-1">Dash</span>';
+
   const log=document.getElementById('tradeLog');
   const empty = log.querySelector('p.text-center');
   if(empty) empty.remove();
@@ -922,6 +932,7 @@ function restoreJournal(){
 }
 
 function logDecision(r){
+  allDecisionsCache.unshift(r);
   if(decisions.length===0){
     const log=document.getElementById('tradeLog');
     log.innerHTML='';
@@ -961,6 +972,56 @@ async function fetchLiveStats(){
   }catch(e){ return null; }
 }
 
+
+let lastKnownTotal = 0;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  const m = document.getElementById('toastMsg');
+  if(!t || !m) return;
+  m.textContent = msg;
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 3500);
+}
+
+
+async function fetchLatestDecisions(){
+  if(!API_URL) return;
+  try{
+    const res = await fetch(API_URL.replace(/\/$/,'') + '/decisions?limit=20', {cache:'no-store'});
+    if(!res.ok) return;
+    const rows = await res.json();
+    if(!rows || !rows.length) return;
+
+    const existingIds = new Set(allDecisionsCache.map(d => d.id || d.timestamp?.toISOString()));
+    let newCount = 0;
+    rows.reverse().forEach(row => {
+      const id = row.id || row.created_at;
+      if(existingIds.has(id)) return;
+      const r = {
+        id: id,
+        action: row.action,
+        direction: row.direction,
+        reason: row.reason || '',
+        ruleHit: row.rule_hit,
+        fg: row.fg_score,
+        contextStrength: row.context_strength,
+        timestamp: new Date(row.created_at),
+        rsi: row.rsi,
+        price: row.price,
+        score: row.score,
+        source: row.source || 'api'
+      };
+      allDecisionsCache.unshift(r);
+      newCount++;
+    });
+
+    if(newCount > 0){
+      showToast(newCount + ' nouvelle(s) décision(s) EA/API');
+      renderFilteredJournal();
+    }
+  }catch(e){}
+}
+
 async function syncLiveStats(){
   const badge = document.getElementById('statsLiveBadge');
   const mini = document.getElementById('apiStatsMini');
@@ -972,6 +1033,10 @@ async function syncLiveStats(){
     return;
   }
   const s = await fetchLiveStats();
+  if(s && typeof s.total === 'number' && s.total > lastKnownTotal && lastKnownTotal > 0){
+    showToast('Nouvelle décision (' + (s.total - lastKnownTotal) + ')');
+  }
+  if(s && typeof s.total === 'number') lastKnownTotal = s.total;
   if(!s){
     if(badge){ badge.textContent='API ?'; badge.className='text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400'; }
     return;
@@ -1007,7 +1072,7 @@ function startStatsPolling(){
   if(statsPollTimer) clearInterval(statsPollTimer);
   if(!API_URL) return;
   syncLiveStats();
-  statsPollTimer = setInterval(syncLiveStats, 15000);
+  statsPollTimer = setInterval(()=>{ syncLiveStats(); fetchLatestDecisions(); }, 12000);
 }
 
 // Override saveApiUrl to restart polling
@@ -1046,7 +1111,7 @@ async function loadHistoryFromApi(){
         score: row.score,
         source: row.source || 'api'
       };
-      decisions.push(r);
+      decisions.push(r); allDecisionsCache.push(r);
       renderLogEntry(r, false); // append in order received (newest first visually if prepend? we append)
     });
     // Re-render newest on top
@@ -1067,6 +1132,30 @@ postToApi = async function(r){
   await _postToApiOrig(r);
   setTimeout(syncLiveStats, 400);
 };
+
+
+let currentFilter = 'all';
+let allDecisionsCache = [];
+
+function filterSource(src){
+  currentFilter = src;
+  document.getElementById('fAll').className = 'px-2 py-1 rounded ' + (src==='all' ? 'bg-gold-500/20 text-gold-400' : 'bg-slate-800 text-slate-400');
+  document.getElementById('fDash').className = 'px-2 py-1 rounded ' + (src==='dashboard' ? 'bg-gold-500/20 text-gold-400' : 'bg-slate-800 text-slate-400');
+  document.getElementById('fEa').className = 'px-2 py-1 rounded ' + (src==='ea' ? 'bg-gold-500/20 text-gold-400' : 'bg-slate-800 text-slate-400');
+  renderFilteredJournal();
+}
+
+function renderFilteredJournal(){
+  const log = document.getElementById('tradeLog');
+  if(!log) return;
+  log.innerHTML = '';
+  const list = allDecisionsCache.filter(d => currentFilter === 'all' || (d.source || 'dashboard') === currentFilter);
+  if(!list.length){
+    log.innerHTML = '<p class="text-sm text-slate-500 text-center py-6">Aucune décision.</p>';
+    return;
+  }
+  list.forEach(r => renderLogEntry(r, true));
+}
 
 // ===== INIT =====
 async function init(){
@@ -1095,5 +1184,12 @@ window.addEventListener('resize',()=>{
   if(tvChart) tvChart.applyOptions({width: document.getElementById('tvChart').clientWidth});
 });
 </script>
+
+<div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 hidden">
+  <div class="bg-slate-800 border border-gold-500/40 text-white text-sm px-4 py-2 rounded-xl shadow-lg flex items-center gap-2">
+    <i class="fas fa-bell text-gold-400"></i>
+    <span id="toastMsg">Nouvelle décision</span>
+  </div>
+</div>
 </body>
 </html>
